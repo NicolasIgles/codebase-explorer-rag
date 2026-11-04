@@ -116,22 +116,26 @@
 
   <footer><span>codebase/explorer · laboratorio RAG</span><span>Proyecto de demostración · fuentes inspeccionables</span></footer>
 
-  <dialog id="consentDialog" class="dialog">
-    <form method="dialog"><button class="dialog-close" aria-label="Cerrar" value="cancel">×</button></form>
-    <p class="eyebrow">Confirmación de envío</p>
-    <h2 id="consentTitle">Revisá el alcance</h2>
-    <p id="consentText"></p>
-    <div id="consentDetails" class="consent-details"></div>
-    <div class="dialog-actions"><button id="cancelConsent" type="button" class="secondary-button">Cancelar</button><button id="confirmConsent" type="button" class="action-button">Confirmar envío <span aria-hidden="true">↗</span></button></div>
-  </dialog>
+  <div id="consentDialog" class="rag-overlay" hidden>
+    <section class="rag-panel" role="dialog" aria-modal="true" aria-labelledby="consentTitle" aria-describedby="consentText">
+      <button id="cancelConsentTop" type="button" class="rag-close" aria-label="Cerrar">×</button>
+      <p class="eyebrow">Confirmación de envío</p>
+      <h2 id="consentTitle">Revisá el alcance</h2>
+      <p id="consentText"></p>
+      <div id="consentDetails" class="consent-details"></div>
+      <div class="rag-actions"><button id="cancelConsent" type="button" class="secondary-button">Cancelar</button><button id="confirmConsent" type="button" class="action-button">Confirmar envío <span aria-hidden="true">↗</span></button></div>
+    </section>
+  </div>
 
-  <dialog id="sourceDialog" class="dialog source-dialog">
-    <form method="dialog"><button class="dialog-close" aria-label="Cerrar" value="cancel">×</button></form>
-    <p id="sourceKind" class="eyebrow">Fuente</p>
-    <h2 id="sourceTitle">Fragmento</h2>
-    <p id="sourceLocation" class="source-location"></p>
-    <pre id="sourceCode"></pre>
-    <button id="closeSource" type="button" class="secondary-button">Volver a resultados</button>
-  </dialog>
+  <div id="sourceDialog" class="rag-overlay" hidden>
+    <section class="rag-panel rag-source" role="dialog" aria-modal="true" aria-labelledby="sourceTitle" aria-describedby="sourceLocation">
+      <button id="closeSourceTop" type="button" class="rag-close" aria-label="Cerrar">×</button>
+      <p id="sourceKind" class="eyebrow">Fuente</p>
+      <h2 id="sourceTitle">Fragmento</h2>
+      <p id="sourceLocation" class="source-location"></p>
+      <pre id="sourceCode"></pre>
+      <button id="closeSource" type="button" class="secondary-button">Volver a resultados</button>
+    </section>
+  </div>
 </body>
 </html>
