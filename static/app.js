@@ -14,7 +14,7 @@ const ui = {
   sources: document.getElementById("sources"),
   answer: document.getElementById("answer"),
   resultFoot: document.getElementById("resultFoot"),
-  consentDialog: document.getElementById("consentDialog"),
+  consentDialog: document.getElementById("ragApprovalLayer"),
   consentTitle: document.getElementById("consentTitle"),
   consentText: document.getElementById("consentText"),
   consentDetails: document.getElementById("consentDetails"),
