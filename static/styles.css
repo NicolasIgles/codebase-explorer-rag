@@ -126,6 +126,7 @@ textarea::placeholder{color:#98a6a2}
 .privacy-copy{max-width:650px}.privacy-copy p{color:#b9cbc6;line-height:1.8;font-size:14px}.privacy-copy strong{color:white}
 footer{display:flex;justify-content:space-between;gap:20px;padding:28px clamp(24px,7vw,110px);color:#78908a;background:var(--dark);border-top:1px solid #30434a;font-size:11px}
 .dialog{width:min(560px,calc(100vw - 32px));max-height:min(85vh,850px);border:1px solid #c6d5cb;border-radius:13px;padding:30px;background:var(--white);color:var(--ink);box-shadow:0 25px 80px #0b242955}
+.dialog[open]{display:block}
 .dialog::backdrop{background:#10262a99;backdrop-filter:blur(3px)}
 .dialog-close{position:absolute;right:17px;top:10px;border:0;background:none;color:#6b7d78;font-size:29px}
 .dialog .eyebrow{margin-bottom:12px}.dialog h2{font-size:34px;margin-bottom:12px}
