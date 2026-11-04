@@ -171,7 +171,7 @@ async function ensureCollection(mode) {
   session.origin = origin;
   session.queryId = null;
   ui.deleteUpload.hidden = origin !== "carga";
-  if (origin === "carga") ui.uploadSummary.textContent = filesSummary() + " · Colección lista; vence en 24 horas.";
+  if (origin === "carga") ui.uploadSummary.textContent = filesSummary() + " · Colección lista; se borra antes de 24 horas o si el servicio se duerme o reinicia.";
   return created;
 }
 
