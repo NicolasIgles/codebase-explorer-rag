@@ -55,7 +55,7 @@
         <button id="useUpload" type="button" class="collection-choice" aria-pressed="false">Cargar mis archivos</button>
       </div>
       <div id="uploadPanel" class="upload-panel" hidden>
-        <div><h3>Una colección temporal para tus archivos</h3><p>Elegí hasta cinco archivos de código, Markdown, TXT o PDF, de 10 MB como máximo cada uno. Llegan a este servidor incluso si elegís «Solo fuentes». Se borran como máximo a las 24 horas y podés eliminarlos antes. En el alojamiento gratuito, la colección también desaparece si el servicio se duerme o reinicia tras un período sin actividad. No ejecutamos el código cargado.</p></div>
+        <div><h3>Una colección temporal para tus archivos</h3><p>Elegí hasta cinco archivos de código, Markdown, TXT o PDF, de 10 MB como máximo cada uno. Llegan a este servidor al buscar fuentes. Se borran como máximo a las 24 horas y podés eliminarlos antes. En el alojamiento gratuito, la colección también desaparece si el servicio se duerme o reinicia tras un período sin actividad. No ejecutamos el código cargado.</p></div>
         <label class="input-label" for="uploadFiles">Archivos</label>
         <input id="uploadFiles" type="file" multiple accept=".py,.js,.jsx,.ts,.tsx,.mjs,.cjs,.md,.markdown,.txt,.pdf">
         <div id="uploadSummary" class="upload-summary">No hay archivos seleccionados.</div>
@@ -63,15 +63,7 @@
       </div>
       <div class="workspace">
         <div class="query-panel">
-          <div class="query-header"><span class="step-number">01</span><div><h3>Elegí cómo consultar</h3><p>Podés empezar viendo solo fuentes.</p></div></div>
-          <fieldset class="mode-options" id="modeOptions">
-            <legend class="sr-only">Modo de consulta</legend>
-            <label class="mode-card"><input type="radio" name="modo" value="local" checked><span class="mode-icon" aria-hidden="true">⌕</span><span><strong>Solo fuentes</strong><small>Busca en el servidor; no envía contenido a OpenAI.</small></span></label>
-            <label class="mode-card"><input type="radio" name="modo" value="acotado"><span class="mode-icon" aria-hidden="true">↗</span><span><strong>Respuesta con fuentes</strong><small>Tras confirmar, envía la pregunta y hasta cinco fragmentos.</small></span></label>
-            <label class="mode-card"><input type="radio" name="modo" value="completo"><span class="mode-icon" aria-hidden="true">◇</span><span><strong>Búsqueda híbrida</strong><small>Requiere revisar el índice antes de enviar código.</small></span></label>
-          </fieldset>
-
-          <div class="query-header second"><span class="step-number">02</span><div><h3>Hacé una pregunta</h3><p>O probá una de las sugerencias.</p></div></div>
+          <div class="query-header"><span class="step-number">01</span><div><h3>Hacé una pregunta</h3><p>Primero buscamos fuentes en este servidor. Vos decidís después si querés usar OpenAI.</p></div></div>
           <div id="suggestions" class="suggestions" aria-label="Preguntas sugeridas"></div>
           <label class="input-label" for="question">Tu pregunta</label>
           <textarea id="question" rows="4" maxlength="500" placeholder="Ej.: ¿Quién puede editar una tarea?"></textarea>
@@ -81,18 +73,42 @@
         </div>
 
         <div class="results-panel" aria-live="polite">
-          <div class="result-header"><span class="step-number">03</span><div><h3>Revisá la evidencia</h3><p>Podés abrir cada fragmento y verificar su ubicación.</p></div></div>
+          <div class="result-header"><span class="step-number">02</span><div><h3>Resultado</h3><p>La respuesta aparece acá; las fuentes quedan debajo para revisarlas.</p></div></div>
           <div id="emptyState" class="empty-state">
             <div class="empty-graphic" aria-hidden="true"><span>01</span><span>02</span><span>03</span></div>
             <h4>Las fuentes aparecerán acá</h4>
             <p>Elegí una pregunta del ejemplo o escribí la tuya para empezar.</p>
           </div>
           <div id="status" class="status-message" role="status" hidden></div>
-          <div id="scope" class="scope-panel" hidden></div>
           <div id="results" hidden>
-            <div class="results-meta"><h4>Fragmentos recuperados</h4><span id="resultCount"></span></div>
-            <div id="sources" class="sources"></div>
-            <div id="answer" class="answer-card" hidden></div>
+            <section id="answerStage" class="answer-stage" tabindex="-1" aria-label="Respuesta y próximos pasos">
+              <p id="resultSummary" class="result-summary"></p>
+              <div id="answer" class="answer-card" hidden></div>
+              <div id="sendPanel" class="decision-panel" hidden>
+                <p id="sendSummary"></p>
+                <details id="sendDetails" class="send-details"><summary>Ver la pregunta y los fragmentos que se enviarán</summary><div id="sendPreview" class="send-preview"></div></details>
+                <button id="answerButton" type="button" class="action-button">Enviar y generar respuesta <span aria-hidden="true">↗</span></button>
+              </div>
+              <div id="translatePanel" class="decision-panel" hidden>
+                <p>Podés ampliar la búsqueda traduciendo solo tu pregunta con OpenAI. No se envían archivos ni fragmentos en este paso.</p>
+                <details class="send-details"><summary>Ver la pregunta que se enviará</summary><pre id="translatePreview"></pre></details>
+                <button id="translateButton" type="button" class="secondary-button">Enviar pregunta para traducir</button>
+              </div>
+            </section>
+            <div id="hybridArea" class="hybrid-area" hidden>
+              <button id="hybridButton" type="button" class="secondary-button">Mejorar búsqueda con IA</button>
+              <div id="hybridPanel" class="decision-panel" hidden>
+                <h4 id="hybridTitle">Búsqueda híbrida</h4>
+                <p id="hybridSummary"></p>
+                <details class="send-details"><summary id="hybridDetailsLabel">Ver el alcance de la búsqueda</summary><p id="hybridQuestion"></p><div id="scope" class="scope-panel"></div></details>
+                <button id="indexButton" type="button" class="action-button">Autorizar y buscar con IA <span aria-hidden="true">↗</span></button>
+                <button id="cancelIndex" type="button" class="text-button">Cancelar</button>
+              </div>
+            </div>
+            <details id="sourcesSection" class="sources-section">
+              <summary>Fuentes encontradas <span id="resultCount"></span></summary>
+              <div id="sources" class="sources"></div>
+            </details>
             <div id="resultFoot" class="result-foot"></div>
           </div>
         </div>
@@ -110,22 +126,11 @@
 
     <section class="privacy-section" id="privacidad" aria-labelledby="privacy-title">
       <div><p class="eyebrow">03 / Privacidad</p><h2 id="privacy-title">Sabé qué sale del servidor.</h2></div>
-      <div class="privacy-copy"><p>En <strong>Solo fuentes</strong>, la búsqueda se queda en este servidor. En los modos con respuesta, una confirmación muestra qué pregunta y qué fragmentos se enviarían a OpenAI. Los embeddings del ejemplo se preparan por separado.</p><p>El ejemplo es público y ficticio. Una cita indica qué fuente se consultó; revisá su contenido antes de tomar la respuesta como cierta.</p></div>
+      <div class="privacy-copy"><p>La búsqueda inicial se queda en este servidor. Antes de generar una respuesta, podés revisar la pregunta y los fragmentos que se enviarán a OpenAI. La búsqueda híbrida pide una autorización aparte y muestra el alcance de la colección.</p><p>El ejemplo es público y ficticio. Una cita indica qué fuente se consultó; revisá su contenido antes de tomar la respuesta como cierta.</p></div>
     </section>
   </main>
 
   <footer><span>codebase/explorer · laboratorio RAG</span><span>Proyecto de demostración · fuentes inspeccionables</span></footer>
-
-  <div id="ragApprovalLayer" class="rag-overlay" hidden>
-    <section class="rag-panel" role="dialog" aria-modal="true" aria-labelledby="consentTitle" aria-describedby="consentText">
-      <button id="cancelConsentTop" type="button" class="rag-close" aria-label="Cerrar">×</button>
-      <p class="eyebrow">Confirmación de envío</p>
-      <h2 id="consentTitle">Revisá el alcance</h2>
-      <p id="consentText"></p>
-      <div id="consentDetails" class="consent-details"></div>
-      <div class="rag-actions"><button id="cancelConsent" type="button" class="secondary-button">Cancelar</button><button id="confirmConsent" type="button" class="action-button">Confirmar envío <span aria-hidden="true">↗</span></button></div>
-    </section>
-  </div>
 
   <div id="sourceDialog" class="rag-overlay" hidden>
     <section class="rag-panel rag-source" role="dialog" aria-modal="true" aria-labelledby="sourceTitle" aria-describedby="sourceLocation">
