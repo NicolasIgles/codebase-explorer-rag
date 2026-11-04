@@ -10,17 +10,30 @@ const ui = {
   status: document.getElementById("status"),
   scope: document.getElementById("scope"),
   results: document.getElementById("results"),
+  answerStage: document.getElementById("answerStage"),
+  resultSummary: document.getElementById("resultSummary"),
+  sourcesSection: document.getElementById("sourcesSection"),
   resultCount: document.getElementById("resultCount"),
   sources: document.getElementById("sources"),
   answer: document.getElementById("answer"),
   resultFoot: document.getElementById("resultFoot"),
-  consentDialog: document.getElementById("ragApprovalLayer"),
-  consentTitle: document.getElementById("consentTitle"),
-  consentText: document.getElementById("consentText"),
-  consentDetails: document.getElementById("consentDetails"),
-  confirmConsent: document.getElementById("confirmConsent"),
-  cancelConsent: document.getElementById("cancelConsent"),
-  cancelConsentTop: document.getElementById("cancelConsentTop"),
+  sendPanel: document.getElementById("sendPanel"),
+  sendSummary: document.getElementById("sendSummary"),
+  sendDetails: document.getElementById("sendDetails"),
+  sendPreview: document.getElementById("sendPreview"),
+  answerButton: document.getElementById("answerButton"),
+  translatePanel: document.getElementById("translatePanel"),
+  translatePreview: document.getElementById("translatePreview"),
+  translateButton: document.getElementById("translateButton"),
+  hybridArea: document.getElementById("hybridArea"),
+  hybridButton: document.getElementById("hybridButton"),
+  hybridPanel: document.getElementById("hybridPanel"),
+  hybridTitle: document.getElementById("hybridTitle"),
+  hybridSummary: document.getElementById("hybridSummary"),
+  hybridDetailsLabel: document.getElementById("hybridDetailsLabel"),
+  hybridQuestion: document.getElementById("hybridQuestion"),
+  indexButton: document.getElementById("indexButton"),
+  cancelIndex: document.getElementById("cancelIndex"),
   sourceDialog: document.getElementById("sourceDialog"),
   sourceKind: document.getElementById("sourceKind"),
   sourceTitle: document.getElementById("sourceTitle"),
@@ -37,8 +50,7 @@ const ui = {
   ,collectionHint: document.getElementById("collectionHint")
 };
 
-let session = { id: null, mode: null, origin: null, selectedOrigin: "ejemplo", queryId: null, sources: [], modelAvailable: false, indexAvailable: false, busy: false };
-let consentResolve = null;
+let session = { id: null, mode: null, origin: null, selectedOrigin: "ejemplo", queryId: null, sources: [], question: "", pendingHybrid: null, modelAvailable: false, indexAvailable: false, busy: false };
 const modalFocus = new WeakMap();
 
 function showOverlay(overlay) {
@@ -55,12 +67,11 @@ function hideOverlay(overlay) {
 }
 
 document.addEventListener("keydown", event => {
-  const overlay = [ui.consentDialog, ui.sourceDialog].find(item => !item.hidden);
+  const overlay = ui.sourceDialog.hidden ? null : ui.sourceDialog;
   if (!overlay) return;
   if (event.key === "Escape") {
     event.preventDefault();
-    if (overlay === ui.consentDialog) finishConsent(false);
-    else hideOverlay(overlay);
+    hideOverlay(overlay);
     return;
   }
   if (event.key !== "Tab") return;
@@ -76,10 +87,6 @@ document.addEventListener("keydown", event => {
     buttons[0].focus();
   }
 });
-
-function selectedMode() {
-  return document.querySelector('input[name="modo"]:checked').value;
-}
 
 async function api(path, options) {
   const settings = Object.assign({}, options || {});
@@ -105,8 +112,12 @@ function status(message, error) {
 function setBusy(value) {
   session.busy = value;
   ui.searchButton.disabled = value;
+  ui.question.disabled = value;
+  ui.uploadFiles.disabled = value;
+  ui.useExample.disabled = value;
+  ui.useUpload.disabled = value;
   ui.searchButton.firstChild.textContent = value ? "Consultando… " : "Buscar fuentes ";
-  document.querySelectorAll('input[name="modo"]').forEach(input => { input.disabled = value; });
+  [ui.answerButton, ui.translateButton, ui.hybridButton, ui.indexButton, ui.cancelIndex].forEach(button => { button.disabled = value; });
 }
 
 function locationOf(source) {
@@ -120,10 +131,20 @@ function locationOf(source) {
 function clearResults() {
   ui.emptyState.hidden = true;
   ui.results.hidden = true;
-  ui.scope.hidden = true;
+  ui.hybridArea.hidden = true;
+  ui.hybridPanel.hidden = true;
+  ui.hybridButton.hidden = false;
+  ui.hybridQuestion.textContent = "";
+  ui.sendPanel.hidden = true;
+  ui.translatePanel.hidden = true;
   ui.answer.hidden = true;
+  ui.sendDetails.open = false;
+  ui.sourcesSection.open = false;
   ui.sources.replaceChildren();
   ui.resultFoot.textContent = "";
+  session.queryId = null;
+  session.sources = [];
+  session.question = "";
   status("", false);
 }
 
@@ -150,64 +171,18 @@ function showScope(scope) {
     note.textContent = excluded.length + " archivo(s) excluido(s) por el filtro de privacidad.";
     ui.scope.append(note);
   }
-  ui.scope.hidden = false;
 }
-
-function askConsent(title, message, details, confirmLabel) {
-  ui.consentTitle.textContent = title;
-  ui.consentText.textContent = message;
-  ui.consentDetails.replaceChildren();
-  const list = document.createElement("ul");
-  details.forEach(detail => {
-    const item = document.createElement("li");
-    item.textContent = detail;
-    list.append(item);
-  });
-  ui.consentDetails.append(list);
-  ui.confirmConsent.firstChild.textContent = confirmLabel + " ";
-  showOverlay(ui.consentDialog);
-  return new Promise(resolve => { consentResolve = resolve; });
-}
-
-function finishConsent(value) {
-  if (consentResolve) {
-    const resolve = consentResolve;
-    consentResolve = null;
-    hideOverlay(ui.consentDialog);
-    resolve(value);
-  }
-}
-ui.confirmConsent.addEventListener("click", () => finishConsent(true));
-ui.cancelConsent.addEventListener("click", () => finishConsent(false));
-ui.cancelConsentTop.addEventListener("click", () => finishConsent(false));
-ui.consentDialog.addEventListener("click", event => {
-  if (event.target === ui.consentDialog) finishConsent(false);
-});
 
 async function ensureCollection(mode) {
   const origin = session.selectedOrigin;
   if (session.id && session.mode === mode && session.origin === origin) return null;
+  await discardPendingHybrid();
   if (session.id) {
     try { await api("/colecciones/" + session.id, { method: "DELETE" }); }
     catch { /* La colección también puede haber vencido. */ }
     session.id = null;
   }
-  let created;
-  if (origin === "carga") {
-    const files = Array.from(ui.uploadFiles.files);
-    if (!files.length) throw new Error("Elegí archivos antes de consultar tu colección.");
-    if (files.length > 5 || files.some(file => file.size > 10_000_000))
-      throw new Error("Se admiten hasta cinco archivos de 10 MB cada uno.");
-    const form = new FormData();
-    form.append("modo", mode);
-    files.forEach(file => form.append("archivos", file));
-    status("Preparando la colección temporal…", false);
-    created = await api("/cargas/colecciones", { method: "POST", body: form });
-  } else {
-    created = await api("/ejemplo/colecciones", {
-      method: "POST", body: JSON.stringify({ modo: mode })
-    });
-  }
+  const created = await createCollection(mode);
   session.id = created.coleccion_id;
   session.mode = mode;
   session.origin = origin;
@@ -217,6 +192,33 @@ async function ensureCollection(mode) {
   return created;
 }
 
+async function createCollection(mode) {
+  const origin = session.selectedOrigin;
+  if (origin === "carga") {
+    const files = Array.from(ui.uploadFiles.files);
+    if (!files.length) throw new Error("Elegí archivos antes de consultar tu colección.");
+    if (files.length > 5 || files.some(file => file.size > 10_000_000))
+      throw new Error("Se admiten hasta cinco archivos de 10 MB cada uno.");
+    const form = new FormData();
+    form.append("modo", mode);
+    files.forEach(file => form.append("archivos", file));
+    status("Preparando la colección temporal…", false);
+    return api("/cargas/colecciones", { method: "POST", body: form });
+  } else {
+    return api("/ejemplo/colecciones", {
+      method: "POST", body: JSON.stringify({ modo: mode })
+    });
+  }
+}
+
+async function discardPendingHybrid() {
+  if (!session.pendingHybrid) return;
+  const id = session.pendingHybrid.coleccion_id;
+  session.pendingHybrid = null;
+  try { await api("/colecciones/" + id, { method: "DELETE" }); }
+  catch { /* Puede haber vencido mientras se revisaba el alcance. */ }
+}
+
 function filesSummary() {
   const files = Array.from(ui.uploadFiles.files);
   return files.length ? files.map(file => file.name).join(" · ") : "No hay archivos seleccionados.";
@@ -224,11 +226,12 @@ function filesSummary() {
 
 function chooseOrigin(origin) {
   if (session.busy) return;
+  discardPendingHybrid();
   session.selectedOrigin = origin;
   ui.uploadPanel.hidden = origin !== "carga";
   ui.suggestions.hidden = origin !== "ejemplo";
   ui.collectionHint.textContent = origin === "carga" ?
-    "La pregunta queda en este servidor salvo que autorices un modo con OpenAI." :
+    "La pregunta queda en este servidor hasta que autorices un envío a OpenAI." :
     "El ejemplo es ficticio y no contiene datos personales.";
   ui.useExample.classList.toggle("active", origin === "ejemplo");
   ui.useUpload.classList.toggle("active", origin === "carga");
@@ -245,10 +248,14 @@ ui.useUpload.addEventListener("click", () => chooseOrigin("carga"));
 ui.uploadFiles.addEventListener("change", () => {
   ui.uploadSummary.textContent = filesSummary();
   if (session.origin === "carga") session.mode = null;
+  discardPendingHybrid();
+  clearResults();
+  ui.emptyState.hidden = false;
 });
 ui.deleteUpload.addEventListener("click", async () => {
   if (!session.id || session.origin !== "carga") return;
   try {
+    await discardPendingHybrid();
     await api("/colecciones/" + session.id, { method: "DELETE" });
     session.id = null;
     session.mode = null;
@@ -285,7 +292,7 @@ ui.sourceDialog.addEventListener("click", event => {
 function renderSources(sources, seconds) {
   session.sources = sources;
   ui.results.hidden = false;
-  ui.resultCount.textContent = sources.length + " / 5";
+  ui.resultCount.textContent = "(" + sources.length + ")";
   ui.sources.replaceChildren();
   if (!sources.length) {
     const message = document.createElement("p");
@@ -316,14 +323,14 @@ function renderSources(sources, seconds) {
     button.addEventListener("click", () => openSource(index + 1));
     ui.sources.append(button);
   });
-  ui.resultFoot.textContent = "Recuperación: " + Number(seconds || 0).toFixed(3) + " s · Las citas son fuentes consultadas, no una garantía de veracidad.";
+  ui.resultFoot.textContent = "Recuperación: " + Number(seconds || 0).toFixed(3) + " s · Revisá cada cita antes de usar la respuesta.";
 }
 
 function renderAnswer(data) {
   ui.answer.replaceChildren();
   ui.answer.classList.toggle("abstain", Boolean(data.abstencion));
   const heading = document.createElement("h4");
-  heading.textContent = data.abstencion ? "Sin evidencia suficiente" : "Respuesta con fuentes";
+  heading.textContent = data.abstencion ? "Sin evidencia suficiente" : "Respuesta";
   const paragraph = document.createElement("p");
   paragraph.textContent = data.abstencion ?
     "Las fuentes recuperadas no alcanzan para responder con seguridad." :
@@ -341,8 +348,59 @@ function renderAnswer(data) {
     });
   }
   ui.answer.hidden = false;
+  ui.resultSummary.textContent = data.abstencion ? "El asistente se abstuvo de responder." : "Respuesta generada a partir de " + session.sources.length + " fuentes.";
+  ui.sendPanel.hidden = true;
+  ui.translatePanel.hidden = true;
+  ui.answerStage.focus({ preventScroll: true });
+  ui.answerStage.scrollIntoView({ behavior: "smooth", block: "start" });
   if (Number(data.tiempos.modelo || 0) > 0)
     ui.resultFoot.textContent += " · Modelo: " + Number(data.tiempos.modelo).toFixed(3) + " s";
+}
+
+function showSendPreview() {
+  ui.sendPreview.replaceChildren();
+  const questionTitle = document.createElement("strong");
+  questionTitle.textContent = "Pregunta";
+  const questionText = document.createElement("pre");
+  questionText.textContent = session.question;
+  ui.sendPreview.append(questionTitle, questionText);
+  session.sources.forEach((source, index) => {
+    const title = document.createElement("strong");
+    title.textContent = "Fuente " + (index + 1) + " · " + (source.titulo || source.simbolo) + " · " + locationOf(source);
+    const code = document.createElement("pre");
+    code.textContent = source.codigo;
+    ui.sendPreview.append(title, code);
+  });
+}
+
+function showNextSteps() {
+  const count = session.sources.length;
+  ui.results.hidden = false;
+  ui.answer.hidden = true;
+  ui.sendPanel.hidden = true;
+  ui.translatePanel.hidden = true;
+  ui.hybridArea.hidden = !session.modelAvailable;
+  ui.hybridButton.hidden = session.mode === "completo";
+  if (count) {
+    ui.resultSummary.textContent = "Encontré " + count + " fuente" + (count === 1 ? "" : "s") + ". Podés generar una respuesta o revisar los fragmentos debajo.";
+    ui.sourcesSection.open = false;
+    if (session.modelAvailable) {
+      ui.sendSummary.textContent = "Para responder, se enviarán tu pregunta y estos " + count + " fragmentos a OpenAI. Podés ver el texto exacto antes de enviarlo.";
+      showSendPreview();
+      ui.sendPanel.hidden = false;
+    } else {
+      ui.resultSummary.textContent += " La generación no está disponible ahora.";
+    }
+  } else {
+    ui.resultSummary.textContent = "No encontré fuentes suficientes para responder. Podés reformular la pregunta.";
+    ui.sourcesSection.open = false;
+    if (session.mode === "acotado" && session.modelAvailable && session.question.includes("¿")) {
+      ui.translatePreview.textContent = session.question;
+      ui.translatePanel.hidden = false;
+    }
+  }
+  ui.answerStage.focus({ preventScroll: true });
+  ui.answerStage.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 async function search() {
@@ -351,88 +409,121 @@ async function search() {
   if (!question) { status("Escribí una pregunta para buscar fuentes.", true); ui.question.focus(); return; }
   clearResults();
   setBusy(true);
-  const mode = selectedMode();
   try {
-    const created = await ensureCollection(mode);
-    if (created && mode === "completo") showScope(created.alcance);
-    let permission = null;
-    if (mode === "completo") {
-      const scope = created ? created.alcance : await api("/colecciones/" + session.id + "/alcance");
-      showScope(scope);
-      if (!session.modelAvailable) {
-        status("El servidor no tiene OPENAI_API_KEY para la búsqueda híbrida.", true);
-        return;
-      }
-      const prepared = session.selectedOrigin === "ejemplo" && session.indexAvailable;
-      const approved = await askConsent(
-        prepared ? "Buscar con el índice preparado" : "Indexar la colección",
-        prepared ?
-          "El índice del ejemplo ya está preparado. Solo se enviará tu pregunta a OpenAI para calcular su vector; el código y los documentos no se reenviarán en este paso." :
-          "Se enviarán a OpenAI el código y la documentación permitidos para calcular embeddings. La pregunta también se enviará para su vector.",
-        scope.rutas,
-        prepared ? "Buscar con OpenAI" : "INDEXAR y buscar"
-      );
-      if (!approved) { status("Indexación cancelada. No se envió contenido.", false); return; }
-      permission = "INDEXAR";
-    }
-    status("Buscando fragmentos y ubicaciones…", false);
+    await ensureCollection("acotado");
+    status("Buscando fuentes en este servidor…", false);
     const query = await api("/colecciones/" + session.id + "/consultas", {
-      method: "POST",
-      body: JSON.stringify({ pregunta: question, autorizacion: permission })
+      method: "POST", body: JSON.stringify({ pregunta: question })
     });
+    session.question = question;
     session.queryId = query.consulta_id;
     renderSources(query.fuentes, query.tiempos.recuperacion);
-    let sources = query.fuentes;
-    if (mode === "acotado" && !sources.length && question.includes("¿") && session.modelAvailable) {
-      const approved = await askConsent(
-        "Ampliar la búsqueda",
-        "La pregunta se enviará a OpenAI para traducirla. No se enviará código en este paso.",
-        [question],
-        "ENVIAR pregunta"
-      );
-      if (approved) {
-        status("Traduciendo la pregunta…", false);
-        const translated = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/traduccion", {
-          method: "POST",
-          body: JSON.stringify({ autorizacion: "ENVIAR" })
-        });
-        sources = translated.fuentes;
-        renderSources(sources, translated.tiempos.recuperacion);
-      }
-    }
-    if (!sources.length) {
-      renderAnswer({ abstencion: true, tiempos: { modelo: 0 } });
-      status("No se encontraron fuentes para una respuesta respaldada.", false);
-      return;
-    }
-    if (mode === "local") { status("Se mostraron fuentes sin llamar a OpenAI.", false); return; }
-    if (!session.modelAvailable) {
-      status("El servidor no tiene OPENAI_API_KEY. Podés revisar las fuentes sin generación.", true);
-      return;
-    }
-    const approved = await askConsent(
-      "Generar respuesta",
-      "Se enviarán la pregunta y los fragmentos mostrados a OpenAI. El modelo responderá con citas o se abstendrá.",
-      sources.map(source => locationOf(source)),
-      mode === "completo" ? "INDEXAR y responder" : "ENVIAR y responder"
-    );
-    if (!approved) { status("Respuesta cancelada. Las fuentes siguen disponibles.", false); return; }
-    status("Validando la respuesta con las fuentes…", false);
+    showNextSteps();
+    status("Búsqueda local lista. No se llamó a OpenAI.", false);
+  } catch (error) { status(error.message, true); }
+  finally { setBusy(false); }
+}
+
+async function generateAnswer() {
+  if (session.busy || !session.queryId || !session.sources.length) return;
+  setBusy(true);
+  try {
+    status("Generando y verificando la respuesta…", false);
     const answer = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/respuesta", {
-      method: "POST",
-      body: JSON.stringify({ autorizacion: mode === "completo" ? "INDEXAR" : "ENVIAR" })
+      method: "POST", body: JSON.stringify({ autorizacion: session.mode === "completo" ? "INDEXAR" : "ENVIAR" })
     });
     renderAnswer(answer);
     status(answer.abstencion ? "El modelo se abstuvo por falta de evidencia." : "Respuesta lista. Abrí las citas para revisar las fuentes.", false);
-  } catch (error) {
-    status(error.message, true);
-  } finally {
+  } catch (error) { status(error.message, true); }
+  finally { setBusy(false); }
+}
+
+async function translateQuestion() {
+  if (session.busy || !session.queryId || session.sources.length) return;
+  setBusy(true);
+  try {
+    status("Traduciendo la pregunta y buscando fuentes…", false);
+    const translated = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/traduccion", {
+      method: "POST", body: JSON.stringify({ autorizacion: "ENVIAR" })
+    });
+    renderSources(translated.fuentes, translated.tiempos.recuperacion);
+    showNextSteps();
+    if (!translated.fuentes.length) ui.translatePanel.hidden = true;
+    status(translated.fuentes.length ? "Búsqueda ampliada lista." : "La traducción tampoco encontró fuentes; probá otra pregunta.", false);
+  } catch (error) { status(error.message, true); }
+  finally { setBusy(false); }
+}
+
+async function prepareHybrid() {
+  if (session.busy || !session.queryId || !session.modelAvailable) return;
+  setBusy(true);
+  try {
+    const created = await createCollection("completo");
+    session.pendingHybrid = created;
+    showScope(created.alcance);
+    const prepared = session.selectedOrigin === "ejemplo" && session.indexAvailable;
+    ui.hybridTitle.textContent = prepared ? "Usar el índice del ejemplo" : "Preparar la búsqueda híbrida";
+    ui.hybridDetailsLabel.textContent = prepared ? "Ver la pregunta y el índice usado" : "Ver la pregunta y los archivos que se indexarán";
+    ui.hybridQuestion.textContent = "Pregunta que se enviará: “" + session.question + "”";
+    ui.indexButton.firstChild.textContent = prepared ? "Enviar pregunta y buscar con IA " : "Enviar texto y buscar con IA ";
+    ui.hybridSummary.textContent = prepared ?
+      "El índice del ejemplo ya está preparado. Al autorizar, solo se enviará tu pregunta a OpenAI para calcular su vector; los archivos no se reenviarán." :
+      "Al autorizar, se enviarán a OpenAI el texto permitido de estos archivos para calcular embeddings y tu pregunta para buscar. Revisá el alcance debajo.";
+    ui.hybridPanel.hidden = false;
+    ui.hybridButton.hidden = true;
+    status("Revisá el alcance y decidí si querés enviar el contenido.", false);
+  } catch (error) { status(error.message, true); }
+  finally {
     setBusy(false);
+    if (!ui.hybridPanel.hidden) ui.indexButton.focus();
   }
 }
 
+async function runHybrid() {
+  if (session.busy || !session.pendingHybrid) return;
+  setBusy(true);
+  const next = session.pendingHybrid;
+  try {
+    status("Buscando con el índice…", false);
+    const query = await api("/colecciones/" + next.coleccion_id + "/consultas", {
+      method: "POST", body: JSON.stringify({ pregunta: session.question, autorizacion: "INDEXAR" })
+    });
+    const oldId = session.id;
+    session.id = next.coleccion_id;
+    session.mode = "completo";
+    session.queryId = query.consulta_id;
+    session.pendingHybrid = null;
+    ui.hybridPanel.hidden = true;
+    renderSources(query.fuentes, query.tiempos.recuperacion);
+    showNextSteps();
+    status("Búsqueda híbrida lista. Para generar respuesta, revisá el contenido y autorizá el siguiente envío.", false);
+    if (oldId) api("/colecciones/" + oldId, { method: "DELETE" }).catch(() => {});
+  } catch (error) { status(error.message, true); }
+  finally { setBusy(false); }
+}
+
+async function cancelHybrid() {
+  await discardPendingHybrid();
+  ui.hybridPanel.hidden = true;
+  ui.hybridButton.hidden = false;
+  ui.hybridButton.focus();
+  status("Búsqueda híbrida cancelada. No se envió contenido a OpenAI.", false);
+}
+
 ui.searchButton.addEventListener("click", search);
-ui.question.addEventListener("input", () => { ui.counter.textContent = ui.question.value.length + " / 500"; });
+ui.answerButton.addEventListener("click", generateAnswer);
+ui.translateButton.addEventListener("click", translateQuestion);
+ui.hybridButton.addEventListener("click", prepareHybrid);
+ui.indexButton.addEventListener("click", runHybrid);
+ui.cancelIndex.addEventListener("click", cancelHybrid);
+ui.question.addEventListener("input", () => {
+  ui.counter.textContent = ui.question.value.length + " / 500";
+  if (session.question && ui.question.value.trim() !== session.question) {
+    discardPendingHybrid();
+    clearResults();
+    ui.emptyState.hidden = false;
+  }
+});
 ui.question.addEventListener("keydown", event => {
   if (event.key === "Enter" && event.ctrlKey) { event.preventDefault(); search(); }
 });
@@ -456,6 +547,9 @@ async function initialize() {
       button.addEventListener("click", () => {
         ui.question.value = item.pregunta;
         ui.counter.textContent = ui.question.value.length + " / 500";
+        discardPendingHybrid();
+        clearResults();
+        ui.emptyState.hidden = false;
         ui.question.focus();
       });
       ui.suggestions.append(button);
