@@ -20,12 +20,14 @@ const ui = {
   consentDetails: document.getElementById("consentDetails"),
   confirmConsent: document.getElementById("confirmConsent"),
   cancelConsent: document.getElementById("cancelConsent"),
+  cancelConsentTop: document.getElementById("cancelConsentTop"),
   sourceDialog: document.getElementById("sourceDialog"),
   sourceKind: document.getElementById("sourceKind"),
   sourceTitle: document.getElementById("sourceTitle"),
   sourceLocation: document.getElementById("sourceLocation"),
   sourceCode: document.getElementById("sourceCode"),
-  closeSource: document.getElementById("closeSource")
+  closeSource: document.getElementById("closeSource"),
+  closeSourceTop: document.getElementById("closeSourceTop")
   ,useExample: document.getElementById("useExample")
   ,useUpload: document.getElementById("useUpload")
   ,uploadPanel: document.getElementById("uploadPanel")
@@ -37,6 +39,43 @@ const ui = {
 
 let session = { id: null, mode: null, origin: null, selectedOrigin: "ejemplo", queryId: null, sources: [], modelAvailable: false, indexAvailable: false, busy: false };
 let consentResolve = null;
+const modalFocus = new WeakMap();
+
+function showOverlay(overlay) {
+  modalFocus.set(overlay, document.activeElement);
+  overlay.hidden = false;
+  overlay.querySelector(".rag-close").focus();
+}
+
+function hideOverlay(overlay) {
+  overlay.hidden = true;
+  const previous = modalFocus.get(overlay);
+  if (previous && previous.isConnected && !previous.disabled) previous.focus();
+  else ui.question.focus();
+}
+
+document.addEventListener("keydown", event => {
+  const overlay = [ui.consentDialog, ui.sourceDialog].find(item => !item.hidden);
+  if (!overlay) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    if (overlay === ui.consentDialog) finishConsent(false);
+    else hideOverlay(overlay);
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const buttons = Array.from(overlay.querySelectorAll("button:not([disabled])"));
+  if (!buttons.includes(document.activeElement)) {
+    event.preventDefault();
+    buttons[0].focus();
+  } else if (event.shiftKey && document.activeElement === buttons[0]) {
+    event.preventDefault();
+    buttons[buttons.length - 1].focus();
+  } else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
+    event.preventDefault();
+    buttons[0].focus();
+  }
+});
 
 function selectedMode() {
   return document.querySelector('input[name="modo"]:checked').value;
@@ -126,7 +165,7 @@ function askConsent(title, message, details, confirmLabel) {
   });
   ui.consentDetails.append(list);
   ui.confirmConsent.firstChild.textContent = confirmLabel + " ";
-  ui.consentDialog.showModal();
+  showOverlay(ui.consentDialog);
   return new Promise(resolve => { consentResolve = resolve; });
 }
 
@@ -134,13 +173,16 @@ function finishConsent(value) {
   if (consentResolve) {
     const resolve = consentResolve;
     consentResolve = null;
-    ui.consentDialog.close();
+    hideOverlay(ui.consentDialog);
     resolve(value);
   }
 }
 ui.confirmConsent.addEventListener("click", () => finishConsent(true));
 ui.cancelConsent.addEventListener("click", () => finishConsent(false));
-ui.consentDialog.addEventListener("close", () => finishConsent(false));
+ui.cancelConsentTop.addEventListener("click", () => finishConsent(false));
+ui.consentDialog.addEventListener("click", event => {
+  if (event.target === ui.consentDialog) finishConsent(false);
+});
 
 async function ensureCollection(mode) {
   const origin = session.selectedOrigin;
@@ -229,12 +271,16 @@ async function openSource(number) {
     ui.sourceTitle.textContent = source.titulo || source.simbolo;
     ui.sourceLocation.textContent = locationOf(source);
     ui.sourceCode.textContent = source.codigo;
-    ui.sourceDialog.showModal();
+    showOverlay(ui.sourceDialog);
   } catch (error) {
     status(error.message, true);
   }
 }
-ui.closeSource.addEventListener("click", () => ui.sourceDialog.close());
+ui.closeSource.addEventListener("click", () => hideOverlay(ui.sourceDialog));
+ui.closeSourceTop.addEventListener("click", () => hideOverlay(ui.sourceDialog));
+ui.sourceDialog.addEventListener("click", event => {
+  if (event.target === ui.sourceDialog) hideOverlay(ui.sourceDialog);
+});
 
 function renderSources(sources, seconds) {
   session.sources = sources;
