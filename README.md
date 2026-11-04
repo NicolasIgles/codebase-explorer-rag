@@ -2,7 +2,7 @@
 
 Una demo RAG para hacer preguntas sobre código y documentación y abrir las fuentes de cada resultado. Permite probar un proyecto ficticio sin cargar nada o crear una colección temporal con archivos propios. La interfaz muestra hasta cinco fragmentos con archivo y líneas o página; cuando la evidencia no alcanza, se abstiene.
 
-**Demo pública:** [codebase-explorer-rag.onrender.com](https://codebase-explorer-rag.onrender.com/). El ejemplo y las cargas propias funcionan en **Solo fuentes**, sin clave de OpenAI. Las respuestas y la búsqueda híbrida públicas siguen deshabilitadas hasta configurar la clave y los límites de gasto del proveedor.
+**Demo pública:** [codebase-explorer-rag.onrender.com](https://codebase-explorer-rag.onrender.com/). La búsqueda inicial recupera fuentes en el servidor. Después podés revisar exactamente qué pregunta y fragmentos se enviarían para generar una respuesta, o autorizar por separado una búsqueda híbrida. El servidor requiere `OPENAI_API_KEY` para esas operaciones y vuelve a comprobar la autorización en cada envío externo.
 
 ## Probar en local
 
@@ -14,7 +14,7 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -B -m uvicorn api_http:app --host 127.0.0.1 --port 8000
 ```
 
-Abrí [http://127.0.0.1:8000/](http://127.0.0.1:8000/) para la web o [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) para el contrato HTTP. La búsqueda **Solo fuentes** funciona sin clave de API. Para respuestas e indexación, definí `OPENAI_API_KEY` en el entorno del servidor; nunca la agregues al repositorio. El usuario de la web confirma qué se envía antes de cada operación con OpenAI.
+Abrí [http://127.0.0.1:8000/](http://127.0.0.1:8000/) para la web o [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) para el contrato HTTP. La búsqueda inicial de fuentes funciona sin clave de API. Para respuestas e indexación, definí `OPENAI_API_KEY` en el entorno del servidor; nunca la agregues al repositorio. La web muestra el contenido que se enviaría antes de cada operación con OpenAI y exige un botón de autorización explícito.
 
 La CLI usa el mismo núcleo:
 
@@ -37,11 +37,11 @@ El contrato común de fragmento está en `fragmentos.py`. `ingesta_fuentes.py` r
 
 | En la web | Servicio | OpenAI |
 | --- | --- | --- |
-| **Solo fuentes** | Extrae y busca en el servidor. | No recibe datos. No genera respuesta. |
-| **Respuesta con fuentes** | Filtra archivos sensibles, recupera y muestra hasta cinco fragmentos. | Tras confirmar `ENVIAR`, recibe pregunta y fragmentos para responder. Si la búsqueda española no encuentra fuentes, una confirmación aparte permite enviar solo la pregunta para traducirla. |
-| **Búsqueda híbrida** | Muestra alcance y exclusiones; combina ranking léxico y semántico. | Tras confirmar `INDEXAR`, recibe los fragmentos permitidos para embeddings si faltan en la caché, y la pregunta para su embedding. Una confirmación posterior permite enviar hasta cinco fuentes para responder. |
+| **Buscar fuentes** | Extrae y busca en el servidor; filtra archivos sensibles. | No recibe datos. La pregunta y hasta cinco fragmentos quedan visibles para revisar. |
+| **Enviar y generar respuesta** | Conserva las fuentes recuperadas. | Tras pulsar el botón, recibe la pregunta y los fragmentos mostrados. Si la búsqueda española no encuentra fuentes, se puede autorizar aparte el envío de solo la pregunta para traducirla. |
+| **Mejorar búsqueda con IA** | Muestra alcance y exclusiones; combina ranking léxico y semántico. | Tras pulsar el botón de autorización, recibe los fragmentos permitidos para embeddings si faltan en la caché, y la pregunta para su embedding. Generar la respuesta exige otra autorización. |
 
-Una **carga propia llega a este servidor en los tres modos**. “Solo fuentes” significa que no se envía a OpenAI, no que el archivo permanezca en el dispositivo del visitante. El filtro de secretos es heurístico: se debe revisar el alcance antes de indexar. Las respuestas usan `store=false`; eso no equivale a ausencia total de registros del proveedor. Una cita comprueba la ubicación de un fragmento consultado, pero no demuestra que toda la respuesta sea correcta.
+Una **carga propia llega a este servidor al buscar fuentes**. El filtro de secretos es heurístico: se debe revisar el alcance antes de indexar. Las respuestas usan `store=false`; eso no equivale a ausencia total de registros del proveedor. Una cita comprueba la ubicación de un fragmento consultado, pero no demuestra que toda la respuesta sea correcta.
 
 ## Cargas temporales
 
@@ -92,6 +92,6 @@ docker build -t codebase-explorer .
 docker run --rm -p 8000:8080 --memory=512m -e OPENAI_API_KEY -v rag-cargas:/data/cargas codebase-explorer
 ```
 
-Docker no está instalado en el entorno local, pero Render Free construyó la imagen desde este repositorio y el despliegue quedó activo. Desde la URL pública se verificaron una fuente de código con ubicación, una abstención sin fuentes, una carga de Python y Markdown y su borrado manual. `/estado` indicó que el índice del ejemplo está preparado y que no hay clave de OpenAI en el servidor. La memoria observada estuvo aproximadamente entre 60 y 80 MB, por debajo de los 512 MB del plan; no se han probado cargas máximas ni concurrencia en ese contenedor.
+Docker no está instalado en el entorno local, pero Render Free construyó la imagen desde este repositorio y el despliegue quedó activo. Se verificaron fuentes, respuesta con cita, abstención, búsqueda híbrida y cargas temporales. `/estado` indica si la clave de OpenAI está disponible y si el índice del ejemplo está preparado. La memoria observada estuvo aproximadamente entre 60 y 80 MB, por debajo de los 512 MB del plan; no se han probado cargas máximas ni concurrencia en ese contenedor.
 
-Render Free [duerme el servicio tras 15 minutos sin tráfico y pierde los archivos locales](https://render.com/docs/free). Una sesión o colección cargada puede desaparecer antes de las 24 horas, y el primer acceso posterior puede tardar alrededor de un minuto. El límite por origen se aplica hoy al par del proxy (`127.0.0.1` en los registros), por lo que se comparte entre visitantes; no se confía en cabeceras de IP reenviadas sin verificar su tratamiento. Antes de habilitar respuestas públicas hay que configurar en OpenAI un límite de gasto efectivo y una alerta, guardar una clave de proyecto solo en las variables de Render y volver a probar consentimiento, citas y costos reales. No habilites `RAG_HABILITAR_RUTAS_LOCALES=1` en una instancia pública; esa opción expone `POST /colecciones` para elegir carpetas del servidor y está reservada al desarrollo local.
+Render Free [duerme el servicio tras 15 minutos sin tráfico y pierde los archivos locales](https://render.com/docs/free). Una sesión o colección cargada puede desaparecer antes de las 24 horas, y el primer acceso posterior puede tardar alrededor de un minuto. El límite por origen se aplica hoy al par del proxy (`127.0.0.1` en los registros), por lo que se comparte entre visitantes; no se confía en cabeceras de IP reenviadas sin verificar su tratamiento. La clave del proyecto de OpenAI se configura solo en las variables de Render; el gasto de la demo se limita desde OpenAI Platform. No habilites `RAG_HABILITAR_RUTAS_LOCALES=1` en una instancia pública; esa opción expone `POST /colecciones` para elegir carpetas del servidor y está reservada al desarrollo local.
