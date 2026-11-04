@@ -50,7 +50,7 @@ const ui = {
   ,collectionHint: document.getElementById("collectionHint")
 };
 
-let session = { id: null, mode: null, origin: null, selectedOrigin: "ejemplo", queryId: null, sources: [], question: "", pendingHybrid: null, modelAvailable: false, indexAvailable: false, busy: false };
+let session = { id: null, mode: null, origin: null, selectedOrigin: "ejemplo", queryId: null, sources: [], question: "", pendingHybrid: null, previousActions: null, modelAvailable: false, indexAvailable: false, busy: false };
 const modalFocus = new WeakMap();
 
 function showOverlay(overlay) {
@@ -145,6 +145,7 @@ function clearResults() {
   session.queryId = null;
   session.sources = [];
   session.question = "";
+  session.previousActions = null;
   status("", false);
 }
 
@@ -375,11 +376,12 @@ function showSendPreview() {
 
 function showNextSteps() {
   const count = session.sources.length;
+  session.previousActions = null;
   ui.results.hidden = false;
   ui.answer.hidden = true;
   ui.sendPanel.hidden = true;
   ui.translatePanel.hidden = true;
-  ui.hybridArea.hidden = !session.modelAvailable;
+  ui.hybridArea.hidden = !session.modelAvailable || session.mode === "completo";
   ui.hybridButton.hidden = session.mode === "completo";
   if (count) {
     ui.resultSummary.textContent = "Encontré " + count + " fuente" + (count === 1 ? "" : "s") + ". Podés generar una respuesta o revisar los fragmentos debajo.";
@@ -469,6 +471,14 @@ async function prepareHybrid() {
     ui.hybridSummary.textContent = prepared ?
       "El índice del ejemplo ya está preparado. Al autorizar, solo se enviará tu pregunta a OpenAI para calcular su vector; los archivos no se reenviarán." :
       "Al autorizar, se enviarán a OpenAI el texto permitido de estos archivos para calcular embeddings y tu pregunta para buscar. Revisá el alcance debajo.";
+    session.previousActions = {
+      send: !ui.sendPanel.hidden,
+      translate: !ui.translatePanel.hidden,
+      summary: ui.resultSummary.textContent
+    };
+    ui.sendPanel.hidden = true;
+    ui.translatePanel.hidden = true;
+    ui.resultSummary.textContent = "Revisá qué se enviará para mejorar la búsqueda. Después podrás generar una respuesta con las nuevas fuentes.";
     ui.hybridPanel.hidden = false;
     ui.hybridButton.hidden = true;
     status("Revisá el alcance y decidí si querés enviar el contenido.", false);
@@ -503,9 +513,19 @@ async function runHybrid() {
 }
 
 async function cancelHybrid() {
+  if (session.busy || !session.pendingHybrid) return;
+  setBusy(true);
   await discardPendingHybrid();
+  const previous = session.previousActions;
+  session.previousActions = null;
   ui.hybridPanel.hidden = true;
   ui.hybridButton.hidden = false;
+  if (previous) {
+    ui.sendPanel.hidden = !previous.send;
+    ui.translatePanel.hidden = !previous.translate;
+    ui.resultSummary.textContent = previous.summary;
+  }
+  setBusy(false);
   ui.hybridButton.focus();
   status("Búsqueda híbrida cancelada. No se envió contenido a OpenAI.", false);
 }
