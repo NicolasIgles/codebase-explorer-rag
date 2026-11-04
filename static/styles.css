@@ -115,6 +115,34 @@ textarea::placeholder{color:#98a6a2}
 .answer-card.abstain p{color:#645b4c}
 .citation{display:inline-flex;border:1px solid #aacbbc;border-radius:5px;background:#e2f2e9;color:var(--teal-dark);font-size:11px;font-weight:800;padding:2px 6px;margin-left:5px}
 .result-foot{color:#85928e;font-size:11px;margin-top:16px}
+.answer-stage{scroll-margin-top:28px;outline:none}
+.answer-stage:focus-visible{outline:2px solid var(--teal);outline-offset:7px;border-radius:4px}
+.result-summary{font-family:Georgia,"Times New Roman",serif;font-size:clamp(21px,2.15vw,29px);line-height:1.28;letter-spacing:-.035em;color:var(--ink);margin:4px 0 18px}
+.decision-panel{border:1px solid #c7d9ce;border-radius:10px;background:#f4faf5;padding:19px;margin:17px 0;color:#3b5a50}
+.decision-panel p{font-size:14px;line-height:1.6;margin:0 0 13px}
+.decision-panel h4{font-size:15px;margin:0 0 9px}
+.decision-panel .action-button{width:100%;margin-top:16px}
+.decision-panel .secondary-button{margin-top:15px}
+.send-details{border-top:1px solid #d6e5d9;padding-top:12px;font-size:12px}
+.send-details summary{cursor:pointer;font-weight:750;color:var(--teal);line-height:1.5}
+.send-preview{max-height:350px;overflow:auto;margin-top:12px}
+.send-preview strong{display:block;font-size:12px;margin:13px 0 5px;overflow-wrap:anywhere}
+.send-preview pre,.send-details pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#e7f0e9;border:1px solid #d4e0d5;border-radius:7px;padding:12px;font:11px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:#26483e;max-height:220px;overflow:auto;margin:0 0 10px}
+.hybrid-area{margin:21px 0}
+.hybrid-area>.secondary-button{width:100%;background:#fffdf8}
+.hybrid-area>.secondary-button:hover{background:#edf6ee}
+.hybrid-area .scope-panel{margin:12px 0 0;background:#fffdf8}
+.text-button{border:0;background:transparent;color:var(--teal);font-size:13px;font-weight:700;padding:13px 5px;cursor:pointer}
+.text-button:hover{text-decoration:underline}
+.sources-section{border-top:1px solid #e3e8e1;padding-top:15px;margin-top:16px}
+.sources-section>summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:750;color:#2a4b43;padding:4px 0 15px}
+.sources-section>summary span{font:700 11px ui-monospace,monospace;color:var(--teal)}
+.sources-section[open]>summary{margin-bottom:4px}
+.answer-card{margin:0 0 16px;padding:25px 26px}
+.answer-card h4{font-family:Georgia,"Times New Roman",serif;font-size:24px;font-weight:500;letter-spacing:-.035em;margin-bottom:13px}
+.answer-card p{font-size:16px;line-height:1.75;color:#294b41}
+.citation{font-size:12px;padding:3px 7px}
+.action-button:disabled,.secondary-button:disabled,.collection-choice:disabled{opacity:.6;cursor:wait}
 .method-section{padding:100px clamp(24px,7vw,110px);max-width:1600px;margin:auto}
 .method-grid{max-width:1450px;margin:auto;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid #d7ddd5}
 .method-grid article{padding:32px 35px 0 0}.method-grid article+article{border-left:1px solid #d7ddd5;padding-left:35px}
@@ -143,3 +171,4 @@ footer{display:flex;justify-content:space-between;gap:20px;padding:28px clamp(24
 @media(max-width:680px){.topbar{min-height:66px;padding:0 20px}.topbar nav{display:none}.api-pill{margin-left:auto}.brand{font-size:15px}.hero{padding:65px 24px 75px}.hero-panel{transform:none;box-shadow:8px 10px 0 #e4e9e0}.workspace-wrap,.method-section{padding:70px 20px}.section-heading{display:block}.section-heading>p{margin-top:15px}.workspace{grid-template-columns:minmax(0,1fr)}.query-panel,.results-panel{padding:23px}.method-grid{grid-template-columns:1fr}.method-grid article{padding:26px 0!important;border-left:0!important;border-bottom:1px solid #d7ddd5}.privacy-section{grid-template-columns:1fr;gap:15px;padding:65px 24px}footer{padding:25px 24px;display:block}footer span{display:block;margin:4px 0}.dialog-actions{flex-direction:column-reverse}.dialog-actions button{width:100%}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
 @media(max-width:680px){.rag-actions{flex-direction:column-reverse}.rag-actions button{width:100%}}
+@media(max-width:680px){.answer-card{padding:21px}.answer-card p{font-size:15px}.result-summary{font-size:23px}.decision-panel{padding:16px}.sources-section>summary{padding-bottom:12px}}
