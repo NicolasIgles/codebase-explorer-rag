@@ -2,7 +2,7 @@
 
 Una demo RAG para hacer preguntas sobre código y documentación y abrir las fuentes de cada resultado. Permite probar un proyecto ficticio sin cargar nada o crear una colección temporal con archivos propios. La interfaz muestra hasta cinco fragmentos con archivo y líneas o página; cuando la evidencia no alcanza, se abstiene.
 
-**Estado:** la web y la carga propia funcionan en desarrollo local. El despliegue público y las alertas de gasto aún no están configurados; no hay enlace público verificado.
+**Demo pública:** [codebase-explorer-rag.onrender.com](https://codebase-explorer-rag.onrender.com/). El ejemplo y las cargas propias funcionan en **Solo fuentes**, sin clave de OpenAI. Las respuestas y la búsqueda híbrida públicas siguen deshabilitadas hasta configurar la clave y los límites de gasto del proveedor.
 
 ## Probar en local
 
@@ -92,4 +92,6 @@ docker build -t codebase-explorer .
 docker run --rm -p 8000:8080 --memory=512m -e OPENAI_API_KEY -v rag-cargas:/data/cargas codebase-explorer
 ```
 
-El contenedor y su memoria **no se pudieron probar en este entorno porque Docker no está instalado**. En Railway, [los volúmenes se montan como root](https://docs.railway.com/volumes); si el volumen de `/data/cargas` impide escribir al usuario de la imagen, el servicio requiere `RAILWAY_RUN_UID=0`. Antes de publicar hay que probar esa ejecución, verificar el origen real de las peticiones detrás del proxy, configurar alertas y límites de OpenAI y Railway, y validar el recorrido desde un enlace externo. No habilites `RAG_HABILITAR_RUTAS_LOCALES=1` en una instancia pública; esa opción expone `POST /colecciones` para elegir carpetas del servidor y está reservada al desarrollo local.
+Docker no está instalado en el entorno local, pero Render Free construyó la imagen desde este repositorio y el despliegue quedó activo. Desde la URL pública se verificaron una fuente de código con ubicación, una abstención sin fuentes, una carga de Python y Markdown y su borrado manual. `/estado` indicó que el índice del ejemplo está preparado y que no hay clave de OpenAI en el servidor. La memoria observada estuvo aproximadamente entre 60 y 80 MB, por debajo de los 512 MB del plan; no se han probado cargas máximas ni concurrencia en ese contenedor.
+
+Render Free [duerme el servicio tras 15 minutos sin tráfico y pierde los archivos locales](https://render.com/docs/free). Una sesión o colección cargada puede desaparecer antes de las 24 horas, y el primer acceso posterior puede tardar alrededor de un minuto. El límite por origen se aplica hoy al par del proxy (`127.0.0.1` en los registros), por lo que se comparte entre visitantes; no se confía en cabeceras de IP reenviadas sin verificar su tratamiento. Antes de habilitar respuestas públicas hay que configurar en OpenAI un límite de gasto efectivo y una alerta, guardar una clave de proyecto solo en las variables de Render y volver a probar consentimiento, citas y costos reales. No habilites `RAG_HABILITAR_RUTAS_LOCALES=1` en una instancia pública; esa opción expone `POST /colecciones` para elegir carpetas del servidor y está reservada al desarrollo local.
