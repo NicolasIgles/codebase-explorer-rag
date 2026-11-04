@@ -1,0 +1,11 @@
+[
+  {"id":"codigo_unidades","pregunta":"¿Qué función suma unidades de lotes activos por SKU?","esperadas":["inventario.py:unidades_disponibles"],"negativo":false},
+  {"id":"codigo_reserva","pregunta":"¿Cómo se comprueba que una cantidad puede reservarse?","esperadas":["inventario.py:puede_reservar"],"negativo":false},
+  {"id":"documento_lunes","pregunta":"¿Qué día se revisan los lotes activos?","esperadas":["docs/manual.md:Recuento","docs/operacion.txt:operacion"],"negativo":false},
+  {"id":"documento_entrega","pregunta":"¿Cuándo se imprime la etiqueta de entrega?","esperadas":["docs/manual.md:Entrega"],"negativo":false},
+  {"id":"cruce_reserva","pregunta":"¿Cómo relaciona el manual puede_reservar con unidades_disponibles?","esperadas":["inventario.py:puede_reservar","docs/manual.md:Reserva"],"negativo":false},
+  {"id":"codigo_etiqueta","pregunta":"¿Qué función forma la etiqueta con número de pedido y destinatario?","esperadas":["entregas.py:etiqueta_entrega"],"negativo":false},
+  {"id":"sin_cifrado","pregunta":"¿Qué algoritmo cifra las contraseñas de los clientes?","esperadas":[],"negativo":true},
+  {"id":"sin_pago","pregunta":"¿Qué pasarela autoriza las tarjetas de crédito?","esperadas":["docs/operacion.txt:operacion"],"negativo":false},
+  {"id":"sin_garantia","pregunta":"¿Cuál es el plazo de garantía de los productos?","esperadas":[],"negativo":true}
+]

@@ -1,0 +1,13 @@
+.git
+.venv
+__pycache__
+*.pyc
+.env
+.env.*
+cache_embeddings
+cargas_temporales
+eval_heldout/index
+evaluacion_holdout.json
+*.pem
+*.key
+work

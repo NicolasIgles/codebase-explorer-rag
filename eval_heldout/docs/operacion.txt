@@ -1,0 +1,3 @@
+Política de operación
+El recuento de inventario se revisa los lunes antes de aceptar nuevas reservas.
+No se registran datos de pago ni se procesan cobros en este proyecto.

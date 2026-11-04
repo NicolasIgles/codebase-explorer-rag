@@ -1,0 +1,14 @@
+[
+  {"question": "¿Dónde se comprueba si alguien puede editar una tarea?", "expected_file": "permissions.py", "expected_symbol": "can_edit_task"},
+  {"question": "¿Cómo se verifica si un proyecto es visible para un usuario?", "expected_file": "permissions.py", "expected_symbol": "can_view_project"},
+  {"question": "¿En qué función se crea una tarea nueva?", "expected_file": "tasks.py", "expected_symbol": "create_task"},
+  {"question": "¿Dónde se marca una tarea como terminada?", "expected_file": "tasks.py", "expected_symbol": "complete_task"},
+  {"question": "¿Qué función cambia la persona asignada a una tarea?", "expected_file": "tasks.py", "expected_symbol": "assign_task"},
+  {"question": "¿Dónde se guarda una tarea en el almacenamiento?", "expected_file": "storage.py", "expected_symbol": "save_task"},
+  {"question": "¿Qué función recupera una tarea por identificador?", "expected_file": "storage.py", "expected_symbol": "load_task"},
+  {"question": "¿Dónde se arma el mensaje para avisar una asignación?", "expected_file": "notifications.py", "expected_symbol": "build_assignment_message"},
+  {"question": "¿Dónde se cuentan las tareas pendientes?", "expected_file": "reports.py", "expected_symbol": "count_pending_tasks"},
+  {"question": "¿Qué función procesa la solicitud de completar una tarea?", "expected_file": "api.py", "expected_symbol": "complete_task_request"},
+  {"question": "¿Dónde se calcula el precio de un pasaje de avión?", "expected_file": null, "expected_symbol": null},
+  {"question": "¿Quién procesa una transferencia bancaria?", "expected_file": null, "expected_symbol": null}
+]

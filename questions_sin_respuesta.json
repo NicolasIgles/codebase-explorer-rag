@@ -1,0 +1,9 @@
+[
+  "Which function encrypts passwords?",
+  "Where is a SQL database connection opened?",
+  "Which method saves test results to a SQL database?",
+  "Which method uploads failed test reports to S3?",
+  "Which method emails the user after a test failure?",
+  "Which function hashes user passwords?",
+  "Which method retries failed tests over the network?"
+]

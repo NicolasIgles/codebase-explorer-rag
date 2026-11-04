@@ -1,0 +1,5 @@
+Política operativa del ejemplo
+
+El equipo revisa las tareas pendientes al inicio de cada reunión semanal. El reporte de pendientes usa el estado de cada tarea; el código no almacena fechas de vencimiento ni genera recordatorios automáticos.
+
+Cuando una tarea cambia de responsable, el mensaje de asignación puede construirse con build_assignment_message. El ejemplo no envía correos: solo devuelve el texto del mensaje.

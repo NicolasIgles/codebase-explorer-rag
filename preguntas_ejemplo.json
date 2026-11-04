@@ -1,0 +1,32 @@
+[
+  {
+    "id": "codigo",
+    "categoria": "Código",
+    "pregunta": "¿Quién puede editar una tarea?",
+    "descripcion": "Ubica la regla en permissions.py."
+  },
+  {
+    "id": "documento",
+    "categoria": "Documentación",
+    "pregunta": "¿Qué dice la guía sobre completar una tarea sin permiso?",
+    "descripcion": "Recupera una sección de la guía."
+  },
+  {
+    "id": "cruce",
+    "categoria": "Código y documento",
+    "pregunta": "¿Cómo relaciona la guía el reporte de pendientes con count_pending_tasks?",
+    "descripcion": "Compara la explicación con la implementación."
+  },
+  {
+    "id": "politica",
+    "categoria": "Documento",
+    "pregunta": "¿Con qué frecuencia revisa el equipo las tareas pendientes?",
+    "descripcion": "Busca una regla operativa que no está en el código."
+  },
+  {
+    "id": "abstencion",
+    "categoria": "Sin evidencia",
+    "pregunta": "¿Qué algoritmo cifra las contraseñas del proyecto?",
+    "descripcion": "El ejemplo no contiene esa información."
+  }
+]

@@ -1,0 +1,651 @@
+{
+  "proyecto": "eval_heldout",
+  "cantidad_fragmentos": 8,
+  "metodos": {
+    "lexica": {
+      "casos": [
+        {
+          "id": "codigo_unidades",
+          "pregunta": "¿Qué función suma unidades de lotes activos por SKU?",
+          "esperadas": [
+            "inventario.py:unidades_disponibles"
+          ],
+          "recuperadas": [
+            "inventario.py:unidades_disponibles",
+            "docs/manual.md:Reserva",
+            "docs/manual.md:Recuento",
+            "inventario.py:puede_reservar"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.00122
+        },
+        {
+          "id": "codigo_reserva",
+          "pregunta": "¿Cómo se comprueba que una cantidad puede reservarse?",
+          "esperadas": [
+            "inventario.py:puede_reservar"
+          ],
+          "recuperadas": [
+            "inventario.py:puede_reservar",
+            "docs/manual.md:Reserva"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.00096
+        },
+        {
+          "id": "documento_lunes",
+          "pregunta": "¿Qué día se revisan los lotes activos?",
+          "esperadas": [
+            "docs/manual.md:Recuento",
+            "docs/operacion.txt:operacion"
+          ],
+          "recuperadas": [
+            "docs/manual.md:Recuento",
+            "docs/manual.md:Reserva",
+            "inventario.py:unidades_disponibles"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": false,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.0009
+        },
+        {
+          "id": "documento_entrega",
+          "pregunta": "¿Cuándo se imprime la etiqueta de entrega?",
+          "esperadas": [
+            "docs/manual.md:Entrega"
+          ],
+          "recuperadas": [
+            "docs/manual.md:Entrega",
+            "entregas.py:etiqueta_entrega"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.00083
+        },
+        {
+          "id": "cruce_reserva",
+          "pregunta": "¿Cómo relaciona el manual puede_reservar con unidades_disponibles?",
+          "esperadas": [
+            "docs/manual.md:Reserva",
+            "inventario.py:puede_reservar"
+          ],
+          "recuperadas": [
+            "inventario.py:puede_reservar",
+            "docs/manual.md:Reserva",
+            "inventario.py:unidades_disponibles",
+            "docs/manual.md:Recuento"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.00107
+        },
+        {
+          "id": "codigo_etiqueta",
+          "pregunta": "¿Qué función forma la etiqueta con número de pedido y destinatario?",
+          "esperadas": [
+            "entregas.py:etiqueta_entrega"
+          ],
+          "recuperadas": [
+            "entregas.py:etiqueta_entrega",
+            "docs/manual.md:Entrega"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.001
+        },
+        {
+          "id": "sin_cifrado",
+          "pregunta": "¿Qué algoritmo cifra las contraseñas de los clientes?",
+          "esperadas": [],
+          "recuperadas": [],
+          "acierto_primera": false,
+          "cobertura_cinco": false,
+          "abstencion_sin_fuentes": true,
+          "segundos": 0.00093
+        },
+        {
+          "id": "sin_pago",
+          "pregunta": "¿Qué pasarela autoriza las tarjetas de crédito?",
+          "esperadas": [],
+          "recuperadas": [],
+          "acierto_primera": false,
+          "cobertura_cinco": false,
+          "abstencion_sin_fuentes": true,
+          "segundos": 0.00094
+        }
+      ],
+      "resumen": {
+        "positivos": 6,
+        "negativos": 2,
+        "acierto_primera": 6,
+        "cobertura_cinco": 5,
+        "negativos_sin_fuentes": 2,
+        "latencia_media_ms": 0.98
+      }
+    },
+    "semantica": {
+      "casos": [
+        {
+          "id": "codigo_unidades",
+          "pregunta": "¿Qué función suma unidades de lotes activos por SKU?",
+          "esperadas": [
+            "inventario.py:unidades_disponibles"
+          ],
+          "recuperadas": [
+            "inventario.py:unidades_disponibles",
+            "docs/manual.md:Recuento",
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Reserva",
+            "inventario.py:puede_reservar"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 2.40256
+        },
+        {
+          "id": "codigo_reserva",
+          "pregunta": "¿Cómo se comprueba que una cantidad puede reservarse?",
+          "esperadas": [
+            "inventario.py:puede_reservar"
+          ],
+          "recuperadas": [
+            "inventario.py:puede_reservar",
+            "docs/manual.md:Reserva",
+            "docs/manual.md:Recuento",
+            "docs/operacion.txt:operacion",
+            "inventario.py:unidades_disponibles"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.59795
+        },
+        {
+          "id": "documento_lunes",
+          "pregunta": "¿Qué día se revisan los lotes activos?",
+          "esperadas": [
+            "docs/manual.md:Recuento",
+            "docs/operacion.txt:operacion"
+          ],
+          "recuperadas": [
+            "docs/manual.md:Recuento",
+            "docs/operacion.txt:operacion",
+            "inventario.py:unidades_disponibles",
+            "docs/manual.md:Reserva",
+            "inventario.py:puede_reservar"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.63708
+        },
+        {
+          "id": "documento_entrega",
+          "pregunta": "¿Cuándo se imprime la etiqueta de entrega?",
+          "esperadas": [
+            "docs/manual.md:Entrega"
+          ],
+          "recuperadas": [
+            "docs/manual.md:Entrega",
+            "entregas.py:etiqueta_entrega",
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Manual de inventario",
+            "docs/manual.md:Recuento"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.4117
+        },
+        {
+          "id": "cruce_reserva",
+          "pregunta": "¿Cómo relaciona el manual puede_reservar con unidades_disponibles?",
+          "esperadas": [
+            "docs/manual.md:Reserva",
+            "inventario.py:puede_reservar"
+          ],
+          "recuperadas": [
+            "docs/manual.md:Reserva",
+            "docs/manual.md:Recuento",
+            "inventario.py:puede_reservar",
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Entrega"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.62856
+        },
+        {
+          "id": "codigo_etiqueta",
+          "pregunta": "¿Qué función forma la etiqueta con número de pedido y destinatario?",
+          "esperadas": [
+            "entregas.py:etiqueta_entrega"
+          ],
+          "recuperadas": [
+            "entregas.py:etiqueta_entrega",
+            "docs/manual.md:Entrega",
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Recuento",
+            "docs/manual.md:Reserva"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.31626
+        },
+        {
+          "id": "sin_cifrado",
+          "pregunta": "¿Qué algoritmo cifra las contraseñas de los clientes?",
+          "esperadas": [],
+          "recuperadas": [
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Recuento",
+            "inventario.py:puede_reservar",
+            "inventario.py:unidades_disponibles",
+            "entregas.py:etiqueta_entrega"
+          ],
+          "acierto_primera": false,
+          "cobertura_cinco": false,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.26956
+        },
+        {
+          "id": "sin_pago",
+          "pregunta": "¿Qué pasarela autoriza las tarjetas de crédito?",
+          "esperadas": [],
+          "recuperadas": [
+            "docs/manual.md:Reserva",
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Entrega",
+            "docs/manual.md:Recuento",
+            "entregas.py:etiqueta_entrega"
+          ],
+          "acierto_primera": false,
+          "cobertura_cinco": false,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.33132
+        }
+      ],
+      "resumen": {
+        "positivos": 6,
+        "negativos": 2,
+        "acierto_primera": 6,
+        "cobertura_cinco": 6,
+        "negativos_sin_fuentes": 0,
+        "latencia_media_ms": 699.37
+      }
+    },
+    "hibrida": {
+      "casos": [
+        {
+          "id": "codigo_unidades",
+          "pregunta": "¿Qué función suma unidades de lotes activos por SKU?",
+          "esperadas": [
+            "inventario.py:unidades_disponibles"
+          ],
+          "recuperadas": [
+            "inventario.py:unidades_disponibles",
+            "docs/manual.md:Recuento",
+            "docs/manual.md:Reserva",
+            "inventario.py:puede_reservar",
+            "docs/operacion.txt:operacion"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 2.40256
+        },
+        {
+          "id": "codigo_reserva",
+          "pregunta": "¿Cómo se comprueba que una cantidad puede reservarse?",
+          "esperadas": [
+            "inventario.py:puede_reservar"
+          ],
+          "recuperadas": [
+            "inventario.py:puede_reservar",
+            "docs/manual.md:Reserva",
+            "docs/manual.md:Recuento",
+            "docs/operacion.txt:operacion",
+            "inventario.py:unidades_disponibles"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.59795
+        },
+        {
+          "id": "documento_lunes",
+          "pregunta": "¿Qué día se revisan los lotes activos?",
+          "esperadas": [
+            "docs/manual.md:Recuento",
+            "docs/operacion.txt:operacion"
+          ],
+          "recuperadas": [
+            "docs/manual.md:Recuento",
+            "inventario.py:unidades_disponibles",
+            "docs/manual.md:Reserva",
+            "docs/operacion.txt:operacion",
+            "inventario.py:puede_reservar"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.63708
+        },
+        {
+          "id": "documento_entrega",
+          "pregunta": "¿Cuándo se imprime la etiqueta de entrega?",
+          "esperadas": [
+            "docs/manual.md:Entrega"
+          ],
+          "recuperadas": [
+            "docs/manual.md:Entrega",
+            "entregas.py:etiqueta_entrega",
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Manual de inventario",
+            "docs/manual.md:Recuento"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.4117
+        },
+        {
+          "id": "cruce_reserva",
+          "pregunta": "¿Cómo relaciona el manual puede_reservar con unidades_disponibles?",
+          "esperadas": [
+            "docs/manual.md:Reserva",
+            "inventario.py:puede_reservar"
+          ],
+          "recuperadas": [
+            "docs/manual.md:Reserva",
+            "inventario.py:puede_reservar",
+            "docs/manual.md:Recuento",
+            "inventario.py:unidades_disponibles",
+            "docs/operacion.txt:operacion"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.62856
+        },
+        {
+          "id": "codigo_etiqueta",
+          "pregunta": "¿Qué función forma la etiqueta con número de pedido y destinatario?",
+          "esperadas": [
+            "entregas.py:etiqueta_entrega"
+          ],
+          "recuperadas": [
+            "entregas.py:etiqueta_entrega",
+            "docs/manual.md:Entrega",
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Recuento",
+            "docs/manual.md:Reserva"
+          ],
+          "acierto_primera": true,
+          "cobertura_cinco": true,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.31626
+        },
+        {
+          "id": "sin_cifrado",
+          "pregunta": "¿Qué algoritmo cifra las contraseñas de los clientes?",
+          "esperadas": [],
+          "recuperadas": [
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Recuento",
+            "inventario.py:puede_reservar",
+            "inventario.py:unidades_disponibles",
+            "entregas.py:etiqueta_entrega"
+          ],
+          "acierto_primera": false,
+          "cobertura_cinco": false,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.26956
+        },
+        {
+          "id": "sin_pago",
+          "pregunta": "¿Qué pasarela autoriza las tarjetas de crédito?",
+          "esperadas": [],
+          "recuperadas": [
+            "docs/manual.md:Reserva",
+            "docs/operacion.txt:operacion",
+            "docs/manual.md:Entrega",
+            "docs/manual.md:Recuento",
+            "entregas.py:etiqueta_entrega"
+          ],
+          "acierto_primera": false,
+          "cobertura_cinco": false,
+          "abstencion_sin_fuentes": false,
+          "segundos": 0.33132
+        }
+      ],
+      "resumen": {
+        "positivos": 6,
+        "negativos": 2,
+        "acierto_primera": 6,
+        "cobertura_cinco": 6,
+        "negativos_sin_fuentes": 0,
+        "latencia_media_ms": 699.37
+      }
+    }
+  },
+  "limites": "Muestra pequeña de un proyecto sintético. Una cita no verifica por sí sola la respuesta.",
+  "api": {
+    "peticiones_embeddings": 9,
+    "tokens_embeddings": 941,
+    "peticiones_respuestas": 14,
+    "tokens_entrada": 6112,
+    "tokens_salida": 896
+  },
+  "respuestas": {
+    "lexica": {
+      "casos": [
+        {
+          "id": "codigo_unidades",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "La función `unidades_disponibles` suma las unidades de los lotes activos para un SKU.",
+          "fuentes_citadas": [
+            "inventario.py:unidades_disponibles"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 2.799
+        },
+        {
+          "id": "codigo_reserva",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "Se comprueba que la cantidad sea positiva y que no supere las unidades disponibles para el SKU.",
+          "fuentes_citadas": [
+            "inventario.py:puede_reservar",
+            "docs/manual.md:Reserva"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.742
+        },
+        {
+          "id": "documento_lunes",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "Los lotes activos se revisan cada lunes.",
+          "fuentes_citadas": [
+            "docs/manual.md:Recuento"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.264
+        },
+        {
+          "id": "documento_entrega",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "Se imprime al preparar la entrega.",
+          "fuentes_citadas": [
+            "docs/manual.md:Entrega"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.682
+        },
+        {
+          "id": "cruce_reserva",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "`puede_reservar` consulta `unidades_disponibles` y permite reservar solo si la cantidad solicitada es positiva y no supera las unidades disponibles de los lotes activos del SKU.",
+          "fuentes_citadas": [
+            "inventario.py:puede_reservar",
+            "docs/manual.md:Reserva",
+            "inventario.py:unidades_disponibles"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.515
+        },
+        {
+          "id": "codigo_etiqueta",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "La función `etiqueta_entrega` forma la etiqueta con el número de pedido y el destinatario.",
+          "fuentes_citadas": [
+            "entregas.py:etiqueta_entrega"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 2.4
+        },
+        {
+          "id": "sin_cifrado",
+          "negativo": true,
+          "respondio": false,
+          "respuesta": "",
+          "fuentes_citadas": [],
+          "cita_fuente_esperada": false,
+          "segundos": 0.0
+        },
+        {
+          "id": "sin_pago",
+          "negativo": true,
+          "respondio": false,
+          "respuesta": "",
+          "fuentes_citadas": [],
+          "cita_fuente_esperada": false,
+          "segundos": 0.0
+        }
+      ],
+      "resumen": {
+        "positivas_respondidas": 6,
+        "positivas_con_cita_esperada": 6,
+        "negativas_abstenidas": 2,
+        "latencia_media_modelo_s": 1.425
+      }
+    },
+    "hibrida": {
+      "casos": [
+        {
+          "id": "codigo_unidades",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "La función `unidades_disponibles` suma las unidades de los lotes activos para un SKU.",
+          "fuentes_citadas": [
+            "inventario.py:unidades_disponibles"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.197
+        },
+        {
+          "id": "codigo_reserva",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "Se comprueba que la cantidad sea positiva y no supere las unidades disponibles para ese SKU, sumadas de sus lotes activos.",
+          "fuentes_citadas": [
+            "inventario.py:puede_reservar",
+            "docs/manual.md:Reserva",
+            "inventario.py:unidades_disponibles"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.807
+        },
+        {
+          "id": "documento_lunes",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "Los lotes activos se revisan cada lunes.",
+          "fuentes_citadas": [
+            "docs/manual.md:Recuento"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.002
+        },
+        {
+          "id": "documento_entrega",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "Se imprime al preparar la entrega.",
+          "fuentes_citadas": [
+            "docs/manual.md:Entrega"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.029
+        },
+        {
+          "id": "cruce_reserva",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "`puede_reservar` permite reservar si la cantidad es positiva y no supera las unidades disponibles. Consulta esas unidades mediante `unidades_disponibles`, que suma las de los lotes activos del SKU.",
+          "fuentes_citadas": [
+            "docs/manual.md:Reserva",
+            "inventario.py:puede_reservar",
+            "inventario.py:unidades_disponibles"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 2.215
+        },
+        {
+          "id": "codigo_etiqueta",
+          "negativo": false,
+          "respondio": true,
+          "respuesta": "La función `etiqueta_entrega` forma la etiqueta con el número de pedido y el destinatario.",
+          "fuentes_citadas": [
+            "entregas.py:etiqueta_entrega"
+          ],
+          "cita_fuente_esperada": true,
+          "segundos": 1.624
+        },
+        {
+          "id": "sin_cifrado",
+          "negativo": true,
+          "respondio": false,
+          "respuesta": "",
+          "fuentes_citadas": [],
+          "cita_fuente_esperada": false,
+          "segundos": 1.173
+        },
+        {
+          "id": "sin_pago",
+          "negativo": true,
+          "respondio": true,
+          "respuesta": "Ninguna: el proyecto no registra datos de pago ni procesa cobros.",
+          "fuentes_citadas": [
+            "docs/operacion.txt:operacion"
+          ],
+          "cita_fuente_esperada": false,
+          "segundos": 2.182
+        }
+      ],
+      "resumen": {
+        "positivas_respondidas": 6,
+        "positivas_con_cita_esperada": 6,
+        "negativas_abstenidas": 1,
+        "latencia_media_modelo_s": 1.529
+      }
+    }
+  },
+  "revision_manual": "Pendiente: las citas existentes no prueban la verdad de cada afirmación."
+}

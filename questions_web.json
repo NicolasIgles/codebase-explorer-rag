@@ -1,0 +1,9 @@
+[
+  {"question": "Which route handles POST task requests?", "expected_file": "app/api/tasks/route.ts", "expected_symbol": "POST"},
+  {"question": "Which route returns the task list?", "expected_file": "app/api/tasks/route.ts", "expected_symbol": "GET"},
+  {"question": "Which React component displays a task card?", "expected_file": "components/TaskCard.jsx", "expected_symbol": "TaskCard"},
+  {"question": "Which function formats a task?", "expected_file": "lib/format.js", "expected_symbol": "formatTask"},
+  {"question": "Which function saves a task?", "expected_file": "lib/tasks.ts", "expected_symbol": "saveTask"},
+  {"question": "Where is the Task interface declared?", "expected_file": "lib/tasks.ts", "expected_symbol": "Task"},
+  {"question": "Which function sends email notifications?", "expected_file": null, "expected_symbol": null}
+]

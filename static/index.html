@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Codebase Explorer — evidencia antes que respuesta</title>
+  <meta name="description" content="Explorá un proyecto de ejemplo, consultá código y documentación y revisá cada fuente recuperada.">
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script defer src="/assets/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#laboratorio">Ir a la consulta</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Codebase Explorer, inicio">
+      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span>codebase<span class="brand-light">/explorer</span></span>
+    </a>
+    <nav aria-label="Navegación principal">
+      <a href="#laboratorio">Probar ejemplo</a>
+      <a href="#metodo">Cómo funciona</a>
+      <a href="#privacidad">Privacidad</a>
+    </nav>
+    <span id="apiState" class="api-pill">Conectando</span>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> Laboratorio RAG · ejemplo abierto</p>
+        <h1 id="hero-title">Una respuesta vale más cuando podés <em>seguir sus fuentes.</em></h1>
+        <p class="hero-lead">Preguntá por un pequeño proyecto de tareas. Mirá qué fragmentos de código y documentación aparecen, en qué archivo están y cuándo la evidencia no alcanza.</p>
+        <div class="hero-actions">
+          <a class="primary-link" href="#laboratorio">Explorar el ejemplo <span aria-hidden="true">↗</span></a>
+          <span class="hero-note">Sin subir archivos para empezar</span>
+        </div>
+      </div>
+      <div class="hero-panel" aria-label="Vista previa de una fuente de código">
+        <div class="panel-top"><span class="panel-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>permissions.py · líneas 4–6</span><span class="panel-type">PY</span></div>
+        <div class="code-preview"><span class="line-number">04</span><span><b>def</b> <strong>can_edit_task</strong>(user, task):</span></div>
+        <div class="code-preview"><span class="line-number">05</span><span>    <i>"""Comprueba si el usuario puede editar la tarea por ser responsable o administrador."""</i></span></div>
+        <div class="code-preview"><span class="line-number">06</span><span>    <b>return</b> user.get(<em>"role"</em>) == <em>"admin"</em> <b>or</b> task.get(<em>"owner_id"</em>) == user.get(<em>"id"</em>)</span></div>
+        <div class="panel-callout"><span class="pulse-dot"></span> Fuente recuperada <span class="panel-arrow">↗</span></div>
+      </div>
+    </section>
+
+    <section class="workspace-wrap" id="laboratorio" aria-labelledby="lab-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">01 / Probar</p><h2 id="lab-title">Consultá el ejemplo</h2></div>
+        <p>El ejemplo combina archivos Python y documentación. Cada consulta muestra los fragmentos utilizados.</p>
+      </div>
+
+      <div class="collection-switch" role="group" aria-label="Colección para consultar">
+        <button id="useExample" type="button" class="collection-choice active" aria-pressed="true">Probar el ejemplo</button>
+        <button id="useUpload" type="button" class="collection-choice" aria-pressed="false">Cargar mis archivos</button>
+      </div>
+      <div id="uploadPanel" class="upload-panel" hidden>
+        <div><h3>Una colección temporal para tus archivos</h3><p>Elegí hasta cinco archivos de código, Markdown, TXT o PDF, de 10 MB como máximo cada uno. Llegan a este servidor incluso si elegís «Solo fuentes». Se borran a las 24 horas; también podés eliminarlos antes. No ejecutamos el código cargado.</p></div>
+        <label class="input-label" for="uploadFiles">Archivos</label>
+        <input id="uploadFiles" type="file" multiple accept=".py,.js,.jsx,.ts,.tsx,.mjs,.cjs,.md,.markdown,.txt,.pdf">
+        <div id="uploadSummary" class="upload-summary">No hay archivos seleccionados.</div>
+        <button id="deleteUpload" type="button" class="secondary-button" hidden>Eliminar mi colección</button>
+      </div>
+      <div class="workspace">
+        <div class="query-panel">
+          <div class="query-header"><span class="step-number">01</span><div><h3>Elegí cómo consultar</h3><p>Podés empezar viendo solo fuentes.</p></div></div>
+          <fieldset class="mode-options" id="modeOptions">
+            <legend class="sr-only">Modo de consulta</legend>
+            <label class="mode-card"><input type="radio" name="modo" value="local" checked><span class="mode-icon" aria-hidden="true">⌕</span><span><strong>Solo fuentes</strong><small>Busca en el servidor; no envía contenido a OpenAI.</small></span></label>
+            <label class="mode-card"><input type="radio" name="modo" value="acotado"><span class="mode-icon" aria-hidden="true">↗</span><span><strong>Respuesta con fuentes</strong><small>Tras confirmar, envía la pregunta y hasta cinco fragmentos.</small></span></label>
+            <label class="mode-card"><input type="radio" name="modo" value="completo"><span class="mode-icon" aria-hidden="true">◇</span><span><strong>Búsqueda híbrida</strong><small>Requiere revisar el índice antes de enviar código.</small></span></label>
+          </fieldset>
+
+          <div class="query-header second"><span class="step-number">02</span><div><h3>Hacé una pregunta</h3><p>O probá una de las sugerencias.</p></div></div>
+          <div id="suggestions" class="suggestions" aria-label="Preguntas sugeridas"></div>
+          <label class="input-label" for="question">Tu pregunta</label>
+          <textarea id="question" rows="4" maxlength="500" placeholder="Ej.: ¿Quién puede editar una tarea?"></textarea>
+          <div class="input-footer"><span id="collectionHint">El ejemplo es ficticio y no contiene datos personales.</span><span id="counter">0 / 500</span></div>
+          <button id="searchButton" class="action-button" type="button">Buscar fuentes <span aria-hidden="true">↗</span></button>
+          <p id="formHint" class="form-hint">Usá Ctrl + Enter para buscar.</p>
+        </div>
+
+        <div class="results-panel" aria-live="polite">
+          <div class="result-header"><span class="step-number">03</span><div><h3>Revisá la evidencia</h3><p>Podés abrir cada fragmento y verificar su ubicación.</p></div></div>
+          <div id="emptyState" class="empty-state">
+            <div class="empty-graphic" aria-hidden="true"><span>01</span><span>02</span><span>03</span></div>
+            <h4>Las fuentes aparecerán acá</h4>
+            <p>Elegí una pregunta del ejemplo o escribí la tuya para empezar.</p>
+          </div>
+          <div id="status" class="status-message" role="status" hidden></div>
+          <div id="scope" class="scope-panel" hidden></div>
+          <div id="results" hidden>
+            <div class="results-meta"><h4>Fragmentos recuperados</h4><span id="resultCount"></span></div>
+            <div id="sources" class="sources"></div>
+            <div id="answer" class="answer-card" hidden></div>
+            <div id="resultFoot" class="result-foot"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="method-section" id="metodo" aria-labelledby="method-title">
+      <div class="section-heading"><div><p class="eyebrow">02 / Entender</p><h2 id="method-title">Del archivo a la respuesta</h2></div><p>El recorrido deja a la vista dónde termina la búsqueda y dónde empieza la interpretación del modelo.</p></div>
+      <div class="method-grid">
+        <article><span class="method-index">01 — PREPARAR</span><h3>Fragmentos con ubicación</h3><p>El servidor separa funciones, secciones y páginas. Conserva la ruta y las líneas o la página para que puedas revisar el origen.</p></article>
+        <article><span class="method-index">02 — RECUPERAR</span><h3>Fuentes antes de responder</h3><p>La búsqueda local ordena coincidencias. La híbrida suma embeddings cuando el índice está preparado y hay autorización.</p></article>
+        <article><span class="method-index">03 — DECIDIR</span><h3>Respuesta o abstención</h3><p>Si pedís una respuesta, el modelo recibe las fuentes mostradas. Puede responder con citas válidas o declarar que no hay evidencia suficiente.</p></article>
+      </div>
+    </section>
+
+    <section class="privacy-section" id="privacidad" aria-labelledby="privacy-title">
+      <div><p class="eyebrow">03 / Privacidad</p><h2 id="privacy-title">Sabé qué sale del servidor.</h2></div>
+      <div class="privacy-copy"><p>En <strong>Solo fuentes</strong>, la búsqueda se queda en este servidor. En los modos con respuesta, una confirmación muestra qué pregunta y qué fragmentos se enviarían a OpenAI. Los embeddings del ejemplo se preparan por separado.</p><p>El ejemplo es público y ficticio. Una cita indica qué fuente se consultó; revisá su contenido antes de tomar la respuesta como cierta.</p></div>
+    </section>
+  </main>
+
+  <footer><span>codebase/explorer · laboratorio RAG</span><span>Proyecto de demostración · fuentes inspeccionables</span></footer>
+
+  <dialog id="consentDialog" class="dialog">
+    <form method="dialog"><button class="dialog-close" aria-label="Cerrar" value="cancel">×</button></form>
+    <p class="eyebrow">Confirmación de envío</p>
+    <h2 id="consentTitle">Revisá el alcance</h2>
+    <p id="consentText"></p>
+    <div id="consentDetails" class="consent-details"></div>
+    <div class="dialog-actions"><button id="cancelConsent" type="button" class="secondary-button">Cancelar</button><button id="confirmConsent" type="button" class="action-button">Confirmar envío <span aria-hidden="true">↗</span></button></div>
+  </dialog>
+
+  <dialog id="sourceDialog" class="dialog source-dialog">
+    <form method="dialog"><button class="dialog-close" aria-label="Cerrar" value="cancel">×</button></form>
+    <p id="sourceKind" class="eyebrow">Fuente</p>
+    <h2 id="sourceTitle">Fragmento</h2>
+    <p id="sourceLocation" class="source-location"></p>
+    <pre id="sourceCode"></pre>
+    <button id="closeSource" type="button" class="secondary-button">Volver a resultados</button>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,16 @@
+[
+  {"question":"Which method loads tests from a test case class?","expected_file":"loader.py","expected_symbol":"loadTestsFromTestCase"},
+  {"question":"Which method builds a test suite from a module?","expected_file":"loader.py","expected_symbol":"loadTestsFromModule"},
+  {"question":"How does the loader find tests recursively in subdirectories?","expected_file":"loader.py","expected_symbol":"discover"},
+  {"question":"Which method loads tests specified by a dotted name?","expected_file":"loader.py","expected_symbol":"loadTestsFromName"},
+  {"question":"Which method adds one test to a suite?","expected_file":"suite.py","expected_symbol":"addTest"},
+  {"question":"How does a suite count all its test cases?","expected_file":"suite.py","expected_symbol":"countTestCases"},
+  {"question":"Where is a failed test recorded in the result?","expected_file":"result.py","expected_symbol":"addFailure"},
+  {"question":"Where is an error from a test recorded?","expected_file":"result.py","expected_symbol":"addError"},
+  {"question":"Which method says whether a test run succeeded?","expected_file":"result.py","expected_symbol":"wasSuccessful"},
+  {"question":"Which assertion checks that two objects are equal?","expected_file":"case.py","expected_symbol":"assertEqual"},
+  {"question":"Which assertion checks that a callable raises an exception?","expected_file":"case.py","expected_symbol":"assertRaises"},
+  {"question":"Which method skips the current test with a reason?","expected_file":"case.py","expected_symbol":"skipTest"},
+  {"question":"Which function encrypts passwords?","expected_file":null,"expected_symbol":null},
+  {"question":"Where is a SQL database connection opened?","expected_file":null,"expected_symbol":null}
+]
