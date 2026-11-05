@@ -581,3 +581,65 @@ async function initialize() {
   }
 }
 initialize();
+
+
+const benchmarkData = [
+  { name: "Búsqueda local", detail: "Coincidencia léxica", first: 6, coverage: 5, negative: 2 },
+  { name: "Embeddings OpenAI", detail: "Búsqueda semántica", first: 6, coverage: 7, negative: 0 },
+  { name: "Búsqueda híbrida", detail: "Léxica + semántica", first: 6, coverage: 7, negative: 0 }
+];
+const benchmarkMetrics = {
+  first: { title: "Fuente esperada en primer lugar", count: 7, denominator: "7 casos respondibles", note: "Mide cuántas preguntas tuvieron una fuente esperada en primer lugar." },
+  coverage: { title: "Todas las fuentes esperadas entre cinco", count: 7, denominator: "7 casos respondibles", note: "Mide cuántas preguntas recuperaron todas las fuentes esperadas entre los cinco primeros resultados." },
+  negative: { title: "Sin fuentes en preguntas negativas", count: 2, denominator: "2 casos sin respuesta", note: "Mide cuándo el buscador no devolvió fuentes para preguntas que carecían de respuesta. Los modos semántico e híbrido devolvieron candidatos; el modelo pudo abstenerse después." }
+};
+function renderBenchmark(metricKey) {
+  const metric = benchmarkMetrics[metricKey];
+  const chart = document.getElementById("benchmarkChart");
+  if (!metric || !chart) return;
+  document.getElementById("benchmarkTitle").textContent = metric.title;
+  document.getElementById("benchmarkDenominator").textContent = metric.denominator;
+  document.getElementById("benchmarkNote").textContent = metric.note;
+  chart.replaceChildren();
+  benchmarkData.forEach((mode) => {
+    const row = document.createElement("div");
+    row.className = "benchmark-row";
+    const label = document.createElement("div");
+    label.className = "benchmark-label";
+    label.textContent = mode.name;
+    const small = document.createElement("small");
+    small.textContent = mode.detail;
+    label.append(small);
+    const track = document.createElement("div");
+    track.className = "benchmark-track";
+    const bar = document.createElement("div");
+    bar.className = "benchmark-bar";
+    bar.style.width = `${(mode[metricKey] / metric.count) * 100}%`;
+    track.append(bar);
+    const value = document.createElement("span");
+    value.className = "benchmark-value";
+    value.textContent = `${mode[metricKey]}/${metric.count}`;
+    row.append(label, track, value);
+    chart.append(row);
+  });
+  const axis = document.createElement("div");
+  axis.className = "benchmark-axis";
+  const axisInner = document.createElement("div");
+  axisInner.className = "benchmark-axis-inner";
+  ["0%", "25%", "50%", "75%", "100%"].forEach((tick) => {
+    const span = document.createElement("span");
+    span.textContent = tick;
+    axisInner.append(span);
+  });
+  axis.append(axisInner);
+  chart.append(axis);
+  document.querySelectorAll(".metric-choice").forEach((button) => {
+    const active = button.dataset.metric === metricKey;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+document.querySelectorAll(".metric-choice").forEach((button) => {
+  button.addEventListener("click", () => renderBenchmark(button.dataset.metric));
+});
+renderBenchmark("first");
