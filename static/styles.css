@@ -231,3 +231,28 @@ footer{display:flex;justify-content:space-between;gap:20px;padding:28px clamp(24
 @media(max-width:1000px){.results-intro-grid{grid-template-columns:1fr}.results-intro-copy{max-width:620px}.results-sample .results-sample-note{margin-left:0;width:100%}.results-detail{grid-template-columns:1fr}}
 @media(max-width:700px){.results-intro{padding:72px 24px 40px}.results-intro h2{font-size:clamp(52px,13vw,82px)}.results-sample{margin-top:46px}.results-sample span{margin-right:12px}.results-body{padding:72px 20px}.results-lead{display:block}.results-lead>p{margin-top:18px}.metric-switch{gap:18px}.metric-choice{font-size:12px}.benchmark-frame{padding:22px 16px}.benchmark-heading{display:block}.benchmark-heading>span{display:block;text-align:left;margin-top:8px}.benchmark-row{grid-template-columns:1fr 58px;gap:8px}.benchmark-label{grid-column:1 / -1}.benchmark-track{height:22px}.benchmark-axis{grid-template-columns:1fr 58px}.benchmark-axis-inner{grid-column:1}.mode-grid{grid-template-columns:1fr}.mode-result,.mode-result+.mode-result{padding:25px 0;border-left:0}.mode-result+.mode-result{border-top:1px solid #aeb8b1}.mode-result p{min-height:0}.results-detail{margin-top:75px}.results-source{margin-top:55px}}
 @media(prefers-reduced-motion:reduce){.benchmark-bar{transition:none}}
+
+/* Why RAG and benchmark reading */
+.hero-explain{font-size:13px;font-weight:700;color:var(--teal);text-decoration:underline;text-underline-offset:5px}
+.rag-explainer{padding:clamp(72px,8vw,118px) clamp(24px,7vw,110px);background:#e9eee7;scroll-margin-top:28px}
+.rag-explainer-head,.rag-explainer-flow,.rag-explainer-foot{max-width:1380px;margin-left:auto;margin-right:auto}
+.rag-explainer-head{display:grid;grid-template-columns:1fr 1fr;column-gap:clamp(30px,8vw,120px)}
+.rag-explainer-head .eyebrow{grid-column:1 / -1}
+.rag-explainer-head h2{font-size:clamp(42px,5vw,75px);margin-bottom:24px}
+.rag-explainer-head h2 em{color:var(--teal);font-weight:400}
+.rag-explainer-head>p:last-child{font:clamp(17px,1.5vw,21px)/1.6 Georgia,serif;color:#3e5552;max-width:630px}
+.rag-explainer-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:38px;border-top:1px solid #9aaba3;border-bottom:1px solid #9aaba3}
+.rag-explainer-flow>div{padding:29px clamp(18px,3vw,42px) 25px 0;position:relative}
+.rag-explainer-flow>div+div{border-left:1px solid #9aaba3;padding-left:clamp(18px,3vw,42px)}
+.rag-explainer-flow>div+div::before{content:"→";position:absolute;left:-14px;top:32px;padding:0 5px;background:#e9eee7;color:#577b70}
+.rag-explainer-flow span,.results-reading-index{display:block;font:700 10px ui-monospace,monospace;letter-spacing:.12em;color:#9b593e;margin-bottom:21px}
+.rag-explainer-flow strong{display:block;font:500 clamp(22px,2.3vw,31px)/1.16 Georgia,serif;letter-spacing:-.035em;max-width:310px}
+.rag-explainer-flow p{font-size:13px;color:#5d6e67;max-width:310px;margin:13px 0 0}
+.rag-explainer-foot{font-size:14px;line-height:1.65;color:#435b52;margin-top:24px;margin-bottom:0;max-width:1380px}
+.results-reading{max-width:1450px;margin:28px auto 0;padding:clamp(24px,3vw,38px);background:#e8ece5;border-left:4px solid #529a84}
+.results-reading h4{font:500 clamp(24px,2.6vw,35px)/1.2 Georgia,serif;letter-spacing:-.035em;margin:0 0 13px}
+.results-reading p{max-width:900px;color:#43554d;font-size:14px;line-height:1.7;margin:0}
+.results-reading code{background:#dbe3d8;padding:2px 4px;border-radius:3px;font-size:.9em}
+.results-reading-index{margin-bottom:13px}
+.results-timing{max-width:1450px;margin:0 auto;padding-top:12px;border-top:1px solid #bdc7be;color:#5f6c66;font-size:12px;line-height:1.6}
+@media(max-width:700px){.rag-explainer{padding:72px 24px}.rag-explainer-head{display:block}.rag-explainer-flow{grid-template-columns:1fr}.rag-explainer-flow>div,.rag-explainer-flow>div+div{padding:23px 0;border-left:0}.rag-explainer-flow>div+div{border-top:1px solid #9aaba3}.rag-explainer-flow>div+div::before{left:24px;top:-15px;transform:rotate(90deg)}.results-reading{margin-top:20px}.hero-explain{width:100%}}
