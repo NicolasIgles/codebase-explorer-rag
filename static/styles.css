@@ -212,7 +212,7 @@ footer{display:flex;justify-content:space-between;gap:20px;padding:28px clamp(24
 .benchmark-row:nth-child(3) .benchmark-bar{background:#9babb0}
 .benchmark-value{text-align:right;font:700 16px ui-monospace,monospace}
 .benchmark-axis{display:grid;grid-template-columns:minmax(145px,220px) minmax(0,1fr) 78px;gap:18px;margin:9px 0 0;color:#77817b;font:11px ui-monospace,monospace}
-.benchmark-axis-inner{display:flex;justify-content:space-between}
+.benchmark-axis-inner{grid-column:2;display:flex;justify-content:space-between}
 .benchmark-note{border-top:1px solid #d6dbd2;padding-top:15px;margin:28px 0 0;color:#68736e;font-size:12px}
 .mode-grid{max-width:1450px;margin:45px auto 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid #aeb8b1;border-bottom:1px solid #aeb8b1}
 .mode-result{padding:26px clamp(12px,2vw,32px) 30px 0}
