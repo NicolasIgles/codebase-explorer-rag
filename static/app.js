@@ -591,7 +591,7 @@ const benchmarkData = [
 const benchmarkMetrics = {
   first: { title: "La fuente esperada aparece primera", count: 7, denominator: "7 preguntas respondibles", note: "Los tres modos aciertan 6 de 7 y fallan en la misma pregunta. Este empate no significa que recuperen las mismas fuentes después del primer puesto." },
   coverage: { title: "Todas las fuentes esperadas entre cinco", count: 7, denominator: "7 preguntas respondibles", note: "En cada pregunta, cuenta solo si todas las fuentes esperadas aparecen entre los cinco primeros resultados. Aquí se ve la diferencia: 5/7 en léxico y 7/7 en semántico e híbrido." },
-  negative: { title: "Ninguna fuente cuando no había respuesta", count: 2, denominator: "2 preguntas sin respuesta", note: "Mide solo la recuperación: la búsqueda léxica devolvió cero fuentes en 2/2; semántica e híbrida devolvieron candidatos en 0/2. El modelo puede abstenerse después, aunque el buscador haya devuelto fuentes." }
+  negative: { title: "Ninguna fuente cuando no había respuesta", count: 2, denominator: "2 preguntas sin respuesta", note: "Mide solo la recuperación: la búsqueda léxica no devolvió fuentes en las 2 preguntas; semántica e híbrida sí devolvieron candidatos en ambas y por eso marcan 0/2. El modelo puede abstenerse después, aunque el buscador haya devuelto fuentes." }
 };
 function renderBenchmark(metricKey) {
   const metric = benchmarkMetrics[metricKey];
