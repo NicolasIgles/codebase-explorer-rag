@@ -589,9 +589,9 @@ const benchmarkData = [
   { name: "Búsqueda híbrida", detail: "Léxica + semántica", first: 6, coverage: 7, negative: 0 }
 ];
 const benchmarkMetrics = {
-  first: { title: "Fuente esperada en primer lugar", count: 7, denominator: "7 casos respondibles", note: "Mide cuántas preguntas tuvieron una fuente esperada en primer lugar." },
-  coverage: { title: "Todas las fuentes esperadas entre cinco", count: 7, denominator: "7 casos respondibles", note: "Mide cuántas preguntas recuperaron todas las fuentes esperadas entre los cinco primeros resultados." },
-  negative: { title: "Sin fuentes en preguntas negativas", count: 2, denominator: "2 casos sin respuesta", note: "Mide cuándo el buscador no devolvió fuentes para preguntas que carecían de respuesta. Los modos semántico e híbrido devolvieron candidatos; el modelo pudo abstenerse después." }
+  first: { title: "La fuente esperada aparece primera", count: 7, denominator: "7 preguntas respondibles", note: "Los tres modos aciertan 6 de 7 y fallan en la misma pregunta. Este empate no significa que recuperen las mismas fuentes después del primer puesto." },
+  coverage: { title: "Todas las fuentes esperadas entre cinco", count: 7, denominator: "7 preguntas respondibles", note: "En cada pregunta, cuenta solo si todas las fuentes esperadas aparecen entre los cinco primeros resultados. Aquí se ve la diferencia: 5/7 en léxico y 7/7 en semántico e híbrido." },
+  negative: { title: "Ninguna fuente cuando no había respuesta", count: 2, denominator: "2 preguntas sin respuesta", note: "Mide solo la recuperación: la búsqueda léxica no devolvió fuentes en las 2 preguntas; semántica e híbrida sí devolvieron candidatos en ambas y por eso marcan 0/2. El modelo puede abstenerse después, aunque el buscador haya devuelto fuentes." }
 };
 function renderBenchmark(metricKey) {
   const metric = benchmarkMetrics[metricKey];
@@ -642,4 +642,4 @@ function renderBenchmark(metricKey) {
 document.querySelectorAll(".metric-choice").forEach((button) => {
   button.addEventListener("click", () => renderBenchmark(button.dataset.metric));
 });
-renderBenchmark("first");
+renderBenchmark("coverage");
