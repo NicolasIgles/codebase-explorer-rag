@@ -6,8 +6,8 @@
   <meta name="color-scheme" content="light">
   <title>Codebase Explorer — evidencia antes que respuesta</title>
   <meta name="description" content="Explorá un proyecto de ejemplo, consultá código y documentación y revisá cada fuente recuperada.">
-  <link rel="stylesheet" href="/assets/styles.css?v=be7f878">
-  <script defer src="/assets/app.js?v=765b52f"></script>
+  <link rel="stylesheet" href="/assets/styles.css?v=f787ac1">
+  <script defer src="/assets/app.js?v=4d3f02e"></script>
 </head>
 <body>
   <a class="skip-link" href="#laboratorio">Ir a la consulta</a>
@@ -18,6 +18,7 @@
     </a>
     <nav aria-label="Navegación principal">
       <a href="#laboratorio">Probar ejemplo</a>
+      <a href="#por-que-rag">Qué es RAG</a>
       <a href="#resultados">Resultados</a>
       <a href="#metodo">Cómo funciona</a>
       <a href="#privacidad">Privacidad</a>
@@ -30,10 +31,10 @@
       <div class="hero-copy">
         <p class="eyebrow"><span class="eyebrow-line"></span> Laboratorio RAG · ejemplo abierto</p>
         <h1 id="hero-title">Una respuesta vale más cuando podés <em>seguir sus fuentes.</em></h1>
-        <p class="hero-lead">Preguntá por un pequeño proyecto de tareas. Mirá qué fragmentos de código y documentación aparecen, en qué archivo están y cuándo la evidencia no alcanza.</p>
+        <p class="hero-lead">Un modelo puede responder con soltura sin conocer tu proyecto. Este laboratorio muestra cómo RAG busca evidencia en el código antes de generar una respuesta y te deja comprobar de dónde salió.</p>
         <div class="hero-actions">
           <a class="primary-link" href="#laboratorio">Explorar el ejemplo <span aria-hidden="true">↗</span></a>
-          <span class="hero-note">Sin subir archivos para empezar</span>
+          <a class="hero-explain" href="#por-que-rag">Entender por qué usar RAG ↓</a>
         </div>
       </div>
       <div class="hero-panel" aria-label="Vista previa de una fuente de código">
@@ -45,6 +46,19 @@
       </div>
     </section>
 
+    <section class="rag-explainer" id="por-que-rag" aria-labelledby="rag-explainer-title">
+      <div class="rag-explainer-head">
+        <p class="eyebrow">01 / El problema</p>
+        <h2 id="rag-explainer-title">El modelo no conoce <em>todo tu contexto.</em></h2>
+        <p>Su conocimiento de entrenamiento llega hasta un período determinado. Además, puede no incluir cambios recientes ni documentación privada de tu proyecto. Si le pedís un dato específico sin darle fuentes, puede contestar con seguridad y equivocarse.</p>
+      </div>
+      <div class="rag-explainer-flow" aria-label="Cómo funciona RAG">
+        <div><span>01 / PREGUNTA</span><strong>¿Quién puede editar una tarea?</strong><p>Una duda concreta sobre este proyecto.</p></div>
+        <div><span>02 / RECUPERAR</span><strong>Buscar fragmentos relevantes</strong><p>Se consultan el código y los documentos disponibles para esta pregunta.</p></div>
+        <div><span>03 / RESPONDER</span><strong>Explicar y citar</strong><p>El modelo recibe esos fragmentos como contexto y puede señalar los archivos usados.</p></div>
+      </div>
+      <p class="rag-explainer-foot">Eso es RAG: <strong>generación aumentada con recuperación</strong>. La búsqueda aporta contexto en cada consulta; no reentrena al modelo ni garantiza que la respuesta sea correcta. Por eso mostramos las fuentes y también cuándo conviene abstenerse.</p>
+    </section>
 
     <section class="results-showcase" id="resultados" aria-labelledby="results-title">
       <div class="results-intro">
@@ -61,26 +75,32 @@
       <div class="results-body" id="comparativa">
         <div class="results-lead">
           <div><p class="eyebrow">Recuperación de fuentes</p><h3>¿Qué cambia entre modos?</h3></div>
-          <p>Las barras muestran proporciones sobre los mismos casos. Elegí una métrica para comparar los tres modos.</p>
+          <p>Empezá por la cobertura: muestra una diferencia real entre modos. Cambiá de métrica para ver dónde empatan y qué pasa cuando no hay respuesta.</p>
         </div>
         <div class="metric-switch" role="group" aria-label="Métrica del gráfico">
-          <button type="button" class="metric-choice is-active" data-metric="first" aria-pressed="true">Primera fuente</button>
-          <button type="button" class="metric-choice" data-metric="coverage" aria-pressed="false">Cobertura entre cinco</button>
+          <button type="button" class="metric-choice is-active" data-metric="coverage" aria-pressed="true">Todas las fuentes</button>
+          <button type="button" class="metric-choice" data-metric="first" aria-pressed="false">Primera fuente</button>
           <button type="button" class="metric-choice" data-metric="negative" aria-pressed="false">Sin fuentes en negativas</button>
         </div>
         <div class="benchmark-frame">
-          <div class="benchmark-heading"><div><span class="benchmark-kicker">COMPARATIVA / HOLDOUT</span><h4 id="benchmarkTitle">Fuente esperada en primer lugar</h4></div><span id="benchmarkDenominator">7 casos respondibles</span></div>
+          <div class="benchmark-heading"><div><span class="benchmark-kicker">COMPARATIVA / HOLDOUT</span><h4 id="benchmarkTitle">Todas las fuentes esperadas entre cinco</h4></div><span id="benchmarkDenominator">7 casos respondibles</span></div>
           <div id="benchmarkChart" class="benchmark-chart" aria-live="polite"></div>
-          <p id="benchmarkNote" class="benchmark-note">Mide cuántas preguntas tuvieron una fuente esperada en primer lugar.</p>
+          <p id="benchmarkNote" class="benchmark-note">En cada una de las 7 preguntas respondibles, ¿aparecieron todas las fuentes esperadas entre los cinco primeros resultados?</p>
         </div>
+        <aside class="results-reading" aria-labelledby="results-reading-title">
+          <span class="results-reading-index">UN CASO DETRÁS DE LAS BARRAS</span>
+          <h4 id="results-reading-title">“¿Qué día se revisan los lotes activos?”</h4>
+          <p>La respuesta necesitaba dos documentos. La búsqueda léxica encontró uno y omitió <code>docs/operacion.txt</code> entre los cinco primeros. La semántica encontró ambos en los puestos 1 y 2; la híbrida, en los puestos 1 y 4. Por eso las dos últimas empatan en cobertura, aunque no ordenan igual las fuentes.</p>
+        </aside>
         <div class="mode-grid" aria-label="Cómo funciona cada modo">
-          <article class="mode-result mode-result-local"><span class="mode-result-index">01 / LOCAL</span><h4>Búsqueda léxica</h4><p>Ordena coincidencias en este servidor. No crea embeddings ni envía contenido a OpenAI.</p><strong>0,94 ms <small>latencia media de recuperación</small></strong></article>
-          <article class="mode-result mode-result-semantic"><span class="mode-result-index">02 / OPENAI</span><h4>Embeddings</h4><p>Usa <code>text-embedding-3-small</code> para comparar la pregunta con los fragmentos autorizados.</p><strong>609,07 ms <small>latencia media de recuperación</small></strong></article>
-          <article class="mode-result mode-result-hybrid"><span class="mode-result-index">03 / COMBINADO</span><h4>Búsqueda híbrida</h4><p>Combina el orden léxico y el semántico. En esta medición igualó la cobertura del modo semántico.</p><strong>609,07 ms <small>latencia media de recuperación</small></strong></article>
+          <article class="mode-result mode-result-local"><span class="mode-result-index">01 / LOCAL</span><h4>Búsqueda léxica</h4><p>Ordena coincidencias en este servidor. No crea embeddings ni envía contenido a OpenAI.</p><strong>5/7 <small>cobertura de todas las fuentes</small></strong></article>
+          <article class="mode-result mode-result-semantic"><span class="mode-result-index">02 / OPENAI</span><h4>Embeddings</h4><p>Usa <code>text-embedding-3-small</code> para comparar la pregunta con los fragmentos autorizados.</p><strong>7/7 <small>cobertura de todas las fuentes</small></strong></article>
+          <article class="mode-result mode-result-hybrid"><span class="mode-result-index">03 / COMBINADO</span><h4>Búsqueda híbrida</h4><p>Combina el orden léxico y el semántico. En esta medición igualó la cobertura del modo semántico.</p><strong>7/7 <small>cobertura de todas las fuentes</small></strong></article>
         </div>
+        <p class="results-timing">Tiempo medido en este conjunto: búsqueda léxica, 0,94 ms de media. La evaluación calculó búsqueda semántica e híbrida juntas en una misma llamada (609,07 ms de media); no hay dos mediciones independientes para comparar su latencia.</p>
         <div class="results-detail">
-          <div><p class="eyebrow">Respuesta con evidencia</p><h3>El modelo decide cuándo responder.</h3></div>
-          <div><p>En los modos léxico e híbrido, <code>gpt-6-luna</code> respondió 6 de 7 preguntas positivas con una cita esperada y se abstuvo en las 2 negativas. El modo semántico no tiene una evaluación de respuestas separada en este conjunto.</p><p>La búsqueda híbrida y la generación requieren autorizaciones distintas en el laboratorio. Una cita válida no demuestra por sí sola que toda la respuesta sea correcta.</p></div>
+          <div><p class="eyebrow">Respuesta con evidencia</p><h3>Buscar fuentes y responder son pasos distintos.</h3></div>
+          <div><p>El gráfico mide qué recupera el buscador, no si la respuesta final es correcta. En una evaluación separada de los modos léxico e híbrido, <code>gpt-6-luna</code> respondió 6 de 7 preguntas positivas con una cita esperada y se abstuvo en las 2 negativas. No se evaluaron respuestas para el modo semántico.</p><p>La búsqueda híbrida y la generación requieren autorizaciones distintas en el laboratorio. Una cita válida no demuestra por sí sola que toda la respuesta sea correcta.</p></div>
         </div>
         <p class="results-source">Fuente: <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/evaluacion_holdout.json" target="_blank" rel="noopener noreferrer">evaluacion_holdout.json</a> · <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/docs/correccion_evaluacion.md" target="_blank" rel="noopener noreferrer">corrección de etiquetas y límites</a>. Estos resultados describen 9 preguntas de un proyecto sintético; no estiman precisión en repositorios reales.</p>
       </div>
