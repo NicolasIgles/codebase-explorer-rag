@@ -18,6 +18,7 @@
     </a>
     <nav aria-label="Navegación principal">
       <a href="#laboratorio">Probar ejemplo</a>
+      <a href="#resultados">Resultados</a>
       <a href="#metodo">Cómo funciona</a>
       <a href="#privacidad">Privacidad</a>
     </nav>
@@ -44,9 +45,50 @@
       </div>
     </section>
 
+
+    <section class="results-showcase" id="resultados" aria-labelledby="results-title">
+      <div class="results-intro">
+        <p class="eyebrow">02 / Evaluación</p>
+        <div class="results-intro-grid">
+          <h2 id="results-title">Tres formas de buscar.<br><em>Resultados a la vista.</em></h2>
+          <div class="results-intro-copy">
+            <p>Comparamos la búsqueda local, la búsqueda con embeddings de OpenAI y la combinación de ambas sobre el mismo proyecto sintético.</p>
+            <a href="#comparativa" class="results-jump">Explorar resultados <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+        <div class="results-sample"><strong>7</strong><span>preguntas respondibles</span><strong>2</strong><span>preguntas sin respuesta</span><span class="results-sample-note">Muestra pequeña · conjunto ya revisado durante el desarrollo</span></div>
+      </div>
+      <div class="results-body" id="comparativa">
+        <div class="results-lead">
+          <div><p class="eyebrow">Recuperación de fuentes</p><h3>¿Qué cambia entre modos?</h3></div>
+          <p>Las barras muestran proporciones sobre los mismos casos. Elegí una métrica para comparar los tres modos.</p>
+        </div>
+        <div class="metric-switch" role="group" aria-label="Métrica del gráfico">
+          <button type="button" class="metric-choice is-active" data-metric="first" aria-pressed="true">Primera fuente</button>
+          <button type="button" class="metric-choice" data-metric="coverage" aria-pressed="false">Cobertura entre cinco</button>
+          <button type="button" class="metric-choice" data-metric="negative" aria-pressed="false">Sin fuentes en negativas</button>
+        </div>
+        <div class="benchmark-frame">
+          <div class="benchmark-heading"><div><span class="benchmark-kicker">COMPARATIVA / HOLDOUT</span><h4 id="benchmarkTitle">Fuente esperada en primer lugar</h4></div><span id="benchmarkDenominator">7 casos respondibles</span></div>
+          <div id="benchmarkChart" class="benchmark-chart" aria-live="polite"></div>
+          <p id="benchmarkNote" class="benchmark-note">Mide cuántas preguntas tuvieron una fuente esperada en primer lugar.</p>
+        </div>
+        <div class="mode-grid" aria-label="Cómo funciona cada modo">
+          <article class="mode-result mode-result-local"><span class="mode-result-index">01 / LOCAL</span><h4>Búsqueda léxica</h4><p>Ordena coincidencias en este servidor. No crea embeddings ni envía contenido a OpenAI.</p><strong>0,94 ms <small>latencia media de recuperación</small></strong></article>
+          <article class="mode-result mode-result-semantic"><span class="mode-result-index">02 / OPENAI</span><h4>Embeddings</h4><p>Usa <code>text-embedding-3-small</code> para comparar la pregunta con los fragmentos autorizados.</p><strong>609,07 ms <small>latencia media de recuperación</small></strong></article>
+          <article class="mode-result mode-result-hybrid"><span class="mode-result-index">03 / COMBINADO</span><h4>Búsqueda híbrida</h4><p>Combina el orden léxico y el semántico. En esta medición igualó la cobertura del modo semántico.</p><strong>609,07 ms <small>latencia media de recuperación</small></strong></article>
+        </div>
+        <div class="results-detail">
+          <div><p class="eyebrow">Respuesta con evidencia</p><h3>El modelo decide cuándo responder.</h3></div>
+          <div><p>En los modos léxico e híbrido, <code>gpt-6-luna</code> respondió 6 de 7 preguntas positivas con una cita esperada y se abstuvo en las 2 negativas. El modo semántico no tiene una evaluación de respuestas separada en este conjunto.</p><p>La búsqueda híbrida y la generación requieren autorizaciones distintas en el laboratorio. Una cita válida no demuestra por sí sola que toda la respuesta sea correcta.</p></div>
+        </div>
+        <p class="results-source">Fuente: <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/evaluacion_holdout.json" target="_blank" rel="noopener noreferrer">evaluacion_holdout.json</a> · <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/docs/correccion_evaluacion.md" target="_blank" rel="noopener noreferrer">corrección de etiquetas y límites</a>. Estos resultados describen 9 preguntas de un proyecto sintético; no estiman precisión en repositorios reales.</p>
+      </div>
+    </section>
+
     <section class="workspace-wrap" id="laboratorio" aria-labelledby="lab-title">
       <div class="section-heading">
-        <div><p class="eyebrow">01 / Probar</p><h2 id="lab-title">Consultá el ejemplo</h2></div>
+        <div><p class="eyebrow">03 / Probar</p><h2 id="lab-title">Consultá el ejemplo</h2></div>
         <p>El ejemplo combina archivos Python y documentación. Cada consulta muestra los fragmentos utilizados.</p>
       </div>
 
@@ -116,7 +158,7 @@
     </section>
 
     <section class="method-section" id="metodo" aria-labelledby="method-title">
-      <div class="section-heading"><div><p class="eyebrow">02 / Entender</p><h2 id="method-title">Del archivo a la respuesta</h2></div><p>El recorrido deja a la vista dónde termina la búsqueda y dónde empieza la interpretación del modelo.</p></div>
+      <div class="section-heading"><div><p class="eyebrow">04 / Entender</p><h2 id="method-title">Del archivo a la respuesta</h2></div><p>El recorrido deja a la vista dónde termina la búsqueda y dónde empieza la interpretación del modelo.</p></div>
       <div class="method-grid">
         <article><span class="method-index">01 — PREPARAR</span><h3>Fragmentos con ubicación</h3><p>El servidor separa funciones, secciones y páginas. Conserva la ruta y las líneas o la página para que puedas revisar el origen.</p></article>
         <article><span class="method-index">02 — RECUPERAR</span><h3>Fuentes antes de responder</h3><p>La búsqueda local ordena coincidencias. La híbrida suma embeddings cuando el índice está preparado y hay autorización.</p></article>
@@ -125,7 +167,7 @@
     </section>
 
     <section class="privacy-section" id="privacidad" aria-labelledby="privacy-title">
-      <div><p class="eyebrow">03 / Privacidad</p><h2 id="privacy-title">Sabé qué sale del servidor.</h2></div>
+      <div><p class="eyebrow">05 / Privacidad</p><h2 id="privacy-title">Sabé qué sale del servidor.</h2></div>
       <div class="privacy-copy"><p>La búsqueda inicial se queda en este servidor. Antes de generar una respuesta, podés revisar la pregunta y los fragmentos que se enviarán a OpenAI. La búsqueda híbrida pide una autorización aparte y muestra el alcance de la colección.</p><p>El ejemplo es público y ficticio. Una cita indica qué fuente se consultó; revisá su contenido antes de tomar la respuesta como cierta.</p></div>
     </section>
   </main>
