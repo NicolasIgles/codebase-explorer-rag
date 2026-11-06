@@ -50,6 +50,28 @@ class SemanticaTest(unittest.TestCase):
         self.assertEqual(primera, segunda)
         cliente.embeddings.create.assert_called_once()
 
+    def test_cada_lote_nuevo_consume_un_envio_y_la_cache_no(self):
+        cliente = Mock()
+        def crear(**parametros):
+            return SimpleNamespace(data=[
+                SimpleNamespace(index=indice, embedding=[1.0, 0.0])
+                for indice, _ in enumerate(parametros["input"])
+            ])
+        cliente.embeddings.create.side_effect = crear
+        envios = []
+        textos = [f"símbolo {indice}" for indice in range(65)]
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as temporal:
+            semantica.vectores(
+                cliente, Path(temporal), textos, temporal,
+                antes_envio=lambda: envios.append("embedding"),
+            )
+            semantica.vectores(
+                cliente, Path(temporal), textos, temporal,
+                antes_envio=lambda: envios.append("embedding"),
+            )
+        self.assertEqual(envios, ["embedding", "embedding"])
+        self.assertEqual(cliente.embeddings.create.call_count, 2)
+
     def test_pruebas_relacionan_un_metodo_con_su_implementacion(self):
         fuente = {
             "ruta": "src/paquete/timed.py", "inicio": 20, "fin": 30,
@@ -76,6 +98,7 @@ class SemanticaTest(unittest.TestCase):
             if f["simbolo"] == "can_edit_task"
         )
         cliente = Mock()
+        envios = []
         cliente.embeddings.create.side_effect = [
             SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[1, 0])]),
             SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[1, 0])]),
@@ -85,6 +108,7 @@ class SemanticaTest(unittest.TestCase):
             semantica.buscar_con_embeddings(
                 carpeta, pregunta, cliente, cache_dir=temporal,
                 fragmentos=[fragmento], guardar_pregunta=False,
+                antes_envio=lambda: envios.append("embedding"),
             )
             archivo = semantica.ruta_cache(carpeta, temporal)
             guardados = json.loads(archivo.read_text(encoding="utf-8"))["vectores"]
@@ -94,6 +118,7 @@ class SemanticaTest(unittest.TestCase):
         self.assertEqual(len(guardados), 1)
         self.assertNotIn(clave_pregunta, guardados)
         self.assertEqual(cliente.embeddings.create.call_count, 2)
+        self.assertEqual(envios, ["embedding", "embedding"])
 
 
 if __name__ == "__main__":

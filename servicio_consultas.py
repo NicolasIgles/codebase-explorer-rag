@@ -72,18 +72,22 @@ def exigir_autorizacion(modo, accion, autorizacion):
         raise PermissionError(f"Se requiere {esperada} antes de {accion}.")
 
 
-def cliente_openai(cliente=None, timeout=30.0):
+def cliente_openai(cliente=None, timeout=30.0, antes_envio=None):
     if not os.getenv("OPENAI_API_KEY"):
         raise ValueError("Falta OPENAI_API_KEY en las variables de entorno; no se llamó al modelo.")
-    return cliente if cliente is not None else OpenAI(timeout=timeout, max_retries=1)
+    return cliente if cliente is not None else OpenAI(
+        timeout=timeout, max_retries=0 if antes_envio else 1
+    )
 
 
-def traducir_pregunta(coleccion, pregunta, autorizacion=None, cliente=None):
+def traducir_pregunta(coleccion, pregunta, autorizacion=None, cliente=None, antes_envio=None):
     """Envía solo la pregunta tras ENVIAR; nunca envía fragmentos aquí."""
     if coleccion["modo"] != "acotado":
         raise ValueError("La traducción solo está disponible en modo acotado.")
     exigir_autorizacion("acotado", "traducir la pregunta", autorizacion)
-    cliente = cliente_openai(cliente)
+    cliente = cliente_openai(cliente, antes_envio=antes_envio)
+    if antes_envio:
+        antes_envio()
     respuesta = cliente.responses.create(
         model="gpt-6-luna",
         store=False,
@@ -99,14 +103,14 @@ def traducir_pregunta(coleccion, pregunta, autorizacion=None, cliente=None):
     return consulta if consulta and "\n" not in consulta and len(consulta) <= 300 else ""
 
 
-def recuperar_fuentes(coleccion, pregunta, autorizacion=None, cliente=None):
+def recuperar_fuentes(coleccion, pregunta, autorizacion=None, cliente=None, antes_envio=None):
     """Recupera sobre los fragmentos preparados, sin volver a recorrer la carpeta."""
     inicio = time.perf_counter()
     fragmentos = coleccion["fragmentos"]
     if coleccion["modo"] == "completo":
         if fragmentos:
             exigir_autorizacion("completo", "indexar código", autorizacion)
-            cliente = cliente_openai(cliente, timeout=60.0)
+            cliente = cliente_openai(cliente, timeout=60.0, antes_envio=antes_envio)
             with BLOQUEO_INDICE:
                 _, fuentes = buscar_con_embeddings(
                     coleccion["carpeta"], pregunta, cliente,
@@ -114,6 +118,7 @@ def recuperar_fuentes(coleccion, pregunta, autorizacion=None, cliente=None):
                     cache_dir=coleccion.get("cache_dir", CACHE),
                     guardar_pregunta=coleccion.get("origen") != "ejemplo",
                     cache_key=coleccion.get("cache_key"),
+                    antes_envio=antes_envio,
                 )
         else:
             fuentes = []
@@ -126,7 +131,8 @@ def recuperar_fuentes(coleccion, pregunta, autorizacion=None, cliente=None):
     }
 
 
-def generar_respuesta(coleccion, pregunta, fuentes, autorizacion=None, cliente=None):
+def generar_respuesta(coleccion, pregunta, fuentes, autorizacion=None, cliente=None,
+                     antes_envio=None):
     """Valida el permiso justo antes de enviar fuentes y validar evidencia."""
     if coleccion["modo"] == "local":
         raise PermissionError("El modo local no envía código a OpenAI.")
@@ -152,9 +158,11 @@ def generar_respuesta(coleccion, pregunta, fuentes, autorizacion=None, cliente=N
     if excluidos or len(permitidos) != len(originales):
         raise ValueError("Las fuentes contienen código excluido por privacidad.")
     inicio = time.perf_counter()
-    cliente = cliente_openai(cliente)
+    cliente = cliente_openai(cliente, antes_envio=antes_envio)
     try:
-        juicio = responder_con_evidencia(cliente, pregunta, originales)
+        juicio = responder_con_evidencia(
+            cliente, pregunta, originales, antes_envio=antes_envio
+        )
     except ValueError as error:
         raise RespuestaModeloInvalida(str(error)) from error
     return {"juicio": juicio, "segundos": time.perf_counter() - inicio}

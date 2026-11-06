@@ -136,7 +136,19 @@ class CargasTemporalesTest(unittest.TestCase):
         with patch.dict("os.environ", {"RAG_PROXY_TRUSTED_CIDRS": "10.0.0.0/24"}):
             self.assertEqual(origen_peticion(Peticion()), "5.6.7.8")
             Peticion.headers = {"x-real-ip": "9.8.7.6", "x-forwarded-for": "1.2.3.4"}
-            self.assertEqual(origen_peticion(Peticion()), "9.8.7.6")
+            self.assertEqual(origen_peticion(Peticion()), "1.2.3.4")
+
+    def test_render_separa_visitantes_y_ignora_cabeceras_fuera_de_su_proxy(self):
+        class Peticion:
+            def __init__(self, par, cabeceras):
+                self.client = type("Cliente", (), {"host": par})()
+                self.headers = cabeceras
+
+        with patch.dict("os.environ", {"RENDER_SERVICE_ID": "srv-prueba", "RAG_PROXY_TRUSTED_CIDRS": ""}):
+            uno = origen_peticion(Peticion("127.0.0.1", {"cf-connecting-ip": "1.1.1.1"}))
+            dos = origen_peticion(Peticion("127.0.0.1", {"cf-connecting-ip": "2.2.2.2"}))
+            falso = origen_peticion(Peticion("10.0.0.2", {"cf-connecting-ip": "3.3.3.3"}))
+        self.assertEqual((uno, dos, falso), ("1.1.1.1", "2.2.2.2", "10.0.0.2"))
 
 
 if __name__ == "__main__":

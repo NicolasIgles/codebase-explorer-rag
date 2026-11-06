@@ -52,9 +52,11 @@ def interpretar_respuesta(texto, cantidad_fuentes):
     return {"hay_evidencia": evidencia, "respuesta": respuesta.strip(), "fuentes": list(dict.fromkeys(fuentes))}
 
 
-def responder_con_evidencia(cliente, pregunta, fragmentos):
+def responder_con_evidencia(cliente, pregunta, fragmentos, antes_envio=None):
     if not fragmentos:
         return {"hay_evidencia": False, "respuesta": "", "fuentes": []}
+    if antes_envio:
+        antes_envio()
     respuesta = cliente.responses.create(
         model="gpt-6-luna",
         store=False,
