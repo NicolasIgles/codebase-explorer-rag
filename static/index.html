@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light">
   <title>Codebase Explorer — evidencia antes que respuesta</title>
   <meta name="description" content="Entendé por qué usar RAG, compará búsqueda léxica, semántica e híbrida y explorá respuestas con fuentes de un proyecto de ejemplo.">
-  <link rel="stylesheet" href="/assets/styles.css?v=f787ac1">
+  <link rel="stylesheet" href="/assets/styles.css?v=dfaba42">
   <script defer src="/assets/app.js?v=b4b534f"></script>
 </head>
 <body>
@@ -192,7 +192,18 @@
     </section>
   </main>
 
-  <footer><span>codebase/explorer · laboratorio RAG</span><span>Proyecto de demostración · fuentes inspeccionables</span></footer>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-identity">
+        <strong>codebase/explorer</strong>
+        <p>Un laboratorio abierto para entender cómo RAG busca evidencia antes de responder.</p>
+      </div>
+      <nav aria-label="Enlaces del proyecto">
+        <a href="https://github.com/NicolasIgles/codebase-explorer-rag" target="_blank" rel="noopener noreferrer">Ver código <span aria-hidden="true">↗</span></a>
+        <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/evaluacion_holdout.json" target="_blank" rel="noopener noreferrer">Ver evaluación <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </footer>
 
   <div id="sourceDialog" class="rag-overlay" hidden>
     <section class="rag-panel rag-source" role="dialog" aria-modal="true" aria-labelledby="sourceTitle" aria-describedby="sourceLocation">
