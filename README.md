@@ -1,4 +1,47 @@
-# Codebase Explorer
+# Codebase Explorer (RAG)
+
+**Ask questions about a codebase and its documentation, and get answers that cite the exact file and line, or an honest "not enough evidence".**
+
+[Live demo](https://codebase-explorer-rag.onrender.com) (free hosting: may take ~1 min to wake up) · Python · FastAPI · OpenAI API · Tree-sitter
+
+- Structure-aware code ingestion (Python `ast`, Tree-sitter for JS/TS), plus Markdown, TXT and PDF (text-based PDFs, no OCR).
+- Hybrid retrieval: lexical + semantic search (embeddings, with a cache), combined with rank fusion: `2/(20 + semantic rank) + 1/(20 + lexical rank)`, so semantic search weighs twice as much.
+- Every answer cites its sources (file and lines, or page for PDFs). The model returns a structured answer with an explicit "is there evidence?" field, and the server rejects answers that cite sources that don't exist or claim evidence without citing any. If retrieval finds nothing, the model is not called.
+- Evaluated on a held-out set, with label corrections documented in `docs/correccion_evaluacion.md`.
+- Privacy by default: explicit consent before sending anything to OpenAI; response calls use `store=false` (this does not mean the provider keeps no logs); usage limits; temporary uploads deleted within 24 h.
+- The public demo accepts 1–5 files (up to 10 MB each); whole repositories can be indexed locally.
+- Personal learning project: I built it in 3 days to understand how RAG works end to end.
+
+## Results
+
+| What was measured | Result |
+|---|---|
+| Expected sources in the top 5 results (hybrid search, held-out set) | **7/7** answerable questions (semantic alone: 7/7; lexical alone: 5/7) |
+| Answers with a correct citation (hybrid mode) | **6/7** answerable questions |
+| Correct abstention on unanswerable questions | **2/2** |
+| Automated tests (OpenAI mocked where it is called) | **72** |
+| Mean retrieval latency | 0.94 ms (lexical, local) / 609 ms (semantic and hybrid, index prepared; includes the OpenAI call that embeds the question) |
+| Token usage in the evaluation | Embeddings: 9 requests, 171 tokens (questions only, warm index). Answers: 15 requests, 6,586 input + 848 output tokens |
+| Faithfulness | 12 affirmative answers reviewed by hand against their sources |
+| Evaluation set size | 9 questions (7 answerable + 2 unanswerable); the evaluation project has 8 fragments |
+
+> The evaluation set is small and synthetic, and the evaluation project is tiny (8 fragments), so "top 5" is an easy bar. It shows the method (held-out split, negative questions, corrected labels), not production-level accuracy. After correcting one label and adding a new negative question (`docs/correccion_evaluacion.md`), the set is no longer blind. On this set, hybrid search tied with semantic search. Results can vary between runs.
+
+## Built with AI-assisted development
+
+I built this project with **Claude Code** as a coding assistant. I had little experience with RAG, so that was the point: learning it fast by building, asking Claude Code to explain the options and their trade-offs, and deciding as I went.
+
+What I did:
+- Defined the scope and what "correct" means for this tool: cited answers, and abstention when the evidence is not enough.
+- Reviewed the evaluation results and fixed the failures.
+- Reviewed the generated code and kept the automated tests passing.
+- Kept the design simple on purpose: a plain JSON index instead of a vector database, because it was enough to understand how RAG works.
+
+What it is not: a mature product. It is a 3-day learning project, documented with its limits.
+
+---
+
+## Documentación técnica (en español)
 
 Una demo RAG para hacer preguntas sobre código y documentación y abrir las fuentes de cada resultado. Permite probar un proyecto ficticio sin cargar nada o crear una colección temporal con archivos propios. La interfaz muestra hasta cinco fragmentos con archivo y líneas o página; cuando la evidencia no alcanza, se abstiene.
 
