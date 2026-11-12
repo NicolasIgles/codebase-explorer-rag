@@ -3,6 +3,7 @@
 import ast
 import io
 import json
+import stat
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -183,7 +184,7 @@ class BusquedaTest(unittest.TestCase):
 
     def test_archivo_grande_se_omite_con_aviso(self):
         avisos = []
-        tamano = SimpleNamespace(st_size=ingesta.MAX_BYTES_ARCHIVO + 1)
+        tamano = SimpleNamespace(st_size=ingesta.MAX_BYTES_ARCHIVO + 1, st_mode=stat.S_IFREG)
         with patch.object(Path, "stat", return_value=tamano):
             fragmentos = ingesta.fragmentos_de_archivo(EJEMPLO / "permissions.py", EJEMPLO, avisos)
         self.assertEqual(fragmentos, [])
