@@ -28,6 +28,8 @@ const ui = {
   resultSummary: $("resultSummary"),
   answer: $("answer"),
   sendPanel: $("sendPanel"),
+  contextTitle: $("contextTitle"),
+  contextNote: $("contextNote"),
   contextList: $("contextList"),
   sendDetails: $("sendDetails"),
   sendPreview: $("sendPreview"),
@@ -62,7 +64,7 @@ const ui = {
 
 const session = {
   id: null, mode: null, origin: null, selectedOrigin: "ejemplo",
-  queryId: null, sources: [], cited: [], question: "", pendingHybrid: null,
+  queryId: null, sources: [], cited: [], question: "", matchQuestion: null, pendingHybrid: null,
   previousActions: null, previousKeys: null, modelAvailable: false,
   indexAvailable: false, busy: false, suggestions: []
 };
@@ -261,14 +263,13 @@ function renderSources(sources, seconds) {
     const previewLines = isText ? allLines.filter(line => line.text.trim()) : allLines;
     const block = codeBlock(previewLines, isText, isText ? 3 : 6);
     const reason = el("p", "razon");
-    const terms = matchedTerms(session.question, source);
+    const terms = matchedTerms(session.matchQuestion || session.question, source);
     if (terms.length) {
       reason.append("Por qué apareció: coincide con ");
       terms.slice(0, 4).forEach((term, i, list) => {
         if (i > 0) reason.append(i === list.length - 1 ? " y " : ", ");
         reason.append(el("mark", "termino", term));
       });
-      if (session.mode === "completo") reason.append(", y se parece en significado");
     } else {
       reason.append(session.mode === "completo" ? "Por qué apareció: se parece en significado a tu pregunta" : "Por qué apareció: coincide con partes del nombre o la ruta");
     }
@@ -292,7 +293,7 @@ function renderSources(sources, seconds) {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     ui.sources.querySelectorAll(".relevancia-barra").forEach(bar => { bar.style.width = bar.dataset.width; });
   }));
-  ui.resultFoot.textContent = "La búsqueda tardó " + formatSeconds(seconds) + " en este servidor. Revisá las líneas citadas antes de dar una respuesta por buena.";
+  ui.resultFoot.textContent = "La búsqueda tardó " + formatSeconds(seconds) + " en este servidor.";
 }
 
 function formatSeconds(seconds) {
@@ -367,25 +368,10 @@ function renderAnswer(data) {
     ui.answerTitle.textContent = "Respuesta";
     ui.resultSummary.textContent = "";
     ui.resultSummary.hidden = true;
-    const box = el("div", "abstencion");
-    box.append(
-      el("h3", "", "No hay evidencia para responder esto"),
-      el("p", "", "Ninguno de los fragmentos encontrados contesta la pregunta. En lugar de inventar, el modelo prefirió no responder: es lo que tiene que hacer un buen sistema RAG.")
-    );
-    const actions = el("div", "botonera");
-    const again = el("button", "boton-principal", "Hacer otra pregunta");
-    again.type = "button";
-    again.addEventListener("click", () => { ui.question.focus(); ui.question.select(); });
-    actions.append(again);
-    const good = session.suggestions.find(item => item.id === "codigo");
-    if (good && session.selectedOrigin === "ejemplo") {
-      const example = el("button", "boton-secundario", "Ver una que sí tiene respuesta");
-      example.type = "button";
-      example.addEventListener("click", () => runSuggestion(good));
-      actions.append(example);
-    }
-    box.append(actions);
-    ui.answer.append(box);
+    ui.answer.append(abstentionBox(
+      "No hay evidencia para responder esto",
+      "Ninguno de los fragmentos encontrados contesta la pregunta. En lugar de inventar, el modelo prefirió no responder: es lo que tiene que hacer un buen sistema RAG."
+    ));
     ui.sourcesTitle.firstChild.textContent = "Lo más cercano que encontró ";
     markCited([]);
     setStage("responder", "abstained", "No respondió, por falta de evidencia");
@@ -411,6 +397,7 @@ function renderAnswer(data) {
     markCited(citas);
     requestAnimationFrame(() => requestAnimationFrame(() => chips.querySelectorAll(".cita").forEach(chip => chip.classList.add("marcada"))));
     setStage("responder", "done", "Usó " + citas.length + " de los " + plural(total, "fragmento"));
+    ui.resultFoot.textContent += " Una cita dice de dónde salió algo, no garantiza que esté bien: revisá las líneas citadas.";
     announce("Respuesta lista. " + data.respuesta);
   }
   ui.answer.hidden = false;
@@ -433,12 +420,46 @@ function showContext() {
   session.sources.forEach((source, index) => addRow("Fragmento " + (index + 1), source.ruta + ", " + placeOf(source), true));
   addRow("Instrucción", "Responder solo con estos fragmentos e indicar cuáles usó. Si no alcanzan, no responder.");
 
-  const parts = ["Pregunta: " + session.question, "", "Fuentes:"];
-  session.sources.forEach((source, index) => {
-    parts.push("[" + (index + 1) + "] " + source.ruta + ", " + placeOf(source) + " (" + (source.simbolo || source.titulo) + ")");
-    parts.push(source.codigo || source.texto || "", "");
+  /* Mismo formato que preparar_consulta y las instrucciones de validar_evidencia.py. */
+  const blocks = session.sources.map((source, index) => {
+    const name = [source.contenedor, source.simbolo].filter(Boolean).join(".");
+    return "[" + (index + 1) + "] " + serverPlace(source) + " (" + name + ")\n" + (source.codigo || "");
   });
-  ui.sendPreview.textContent = parts.join("\n");
+  ui.sendPreview.textContent =
+    "Instrucciones para el modelo:\n" + MODEL_INSTRUCTIONS +
+    "\n\nConsulta:\nPregunta: " + session.question + "\n\nFuentes:\n" + blocks.join("\n\n");
+}
+
+const MODEL_INSTRUCTIONS =
+  "Decidí si alguno de los fragmentos realmente contiene evidencia para responder. " +
+  "Un nombre parecido no alcanza. Si hay evidencia, respondé en español de forma breve " +
+  "y poné en fuentes solo los números que respaldan la respuesta; no agregues citas al texto. " +
+  "Si no hay evidencia suficiente, usá hay_evidencia=false, respuesta vacía y fuentes vacías. " +
+  "No inventes comportamiento que no figure en los fragmentos.";
+
+function serverPlace(source) {
+  const place = source.ubicacion || {};
+  const base = place.tipo === "pagina" ? source.ruta + ":página " + place.pagina : source.ruta + ":" + source.inicio + "-" + source.fin;
+  return place.columna_inicio != null ? base + ":columnas " + place.columna_inicio + "-" + place.columna_fin : base;
+}
+
+function abstentionBox(title, text) {
+  const box = el("div", "abstencion");
+  box.append(el("h3", "", title), el("p", "", text));
+  const actions = el("div", "botonera");
+  const again = el("button", "boton-principal", "Hacer otra pregunta");
+  again.type = "button";
+  again.addEventListener("click", () => { ui.question.focus(); ui.question.select(); });
+  actions.append(again);
+  const good = session.suggestions.find(item => item.id === "codigo");
+  if (good && session.selectedOrigin === "ejemplo") {
+    const example = el("button", "boton-secundario", "Ver una que sí tiene respuesta");
+    example.type = "button";
+    example.addEventListener("click", () => runSuggestion(good));
+    actions.append(example);
+  }
+  box.append(actions);
+  return box;
 }
 
 /* ---------- después de cada búsqueda ---------- */
@@ -461,8 +482,10 @@ function clearResults() {
   session.sources = [];
   session.cited = [];
   session.question = "";
+  session.matchQuestion = null;
   session.previousActions = null;
   session.previousKeys = null;
+  ui.answerButton.hidden = false;
   resetStages();
   status("", false);
 }
@@ -486,36 +509,47 @@ function showNextSteps() {
   if (count) {
     setStage("recuperar", "done", plural(count, "fragmento encontrado", "fragmentos encontrados") + (hybrid ? ", con palabras y significado" : ", en este servidor"));
     ui.answerTitle.textContent = "Encontró " + plural(count, "fragmento");
+    showContext();
+    ui.sendPanel.hidden = false;
     if (session.modelAvailable) {
       setStage("contexto", "waiting", "Revisá lo que recibiría el modelo");
-      ui.resultSummary.textContent = "Antes de responder, mirá exactamente qué recibiría el modelo y decidí si lo enviás.";
-      showContext();
-      ui.sendPanel.hidden = false;
+      ui.resultSummary.textContent = "Antes de responder, mirá qué recibiría el modelo y decidí si lo enviás.";
+      ui.contextTitle.textContent = "Esto es lo que recibirá el modelo";
+      ui.contextNote.textContent = "Nada sale de este servidor hasta que tocás el botón.";
+      ui.answerButton.hidden = false;
     } else {
-      setStage("contexto", "skipped", "Necesita OpenAI en el servidor");
-      setStage("responder", "skipped", "Necesita OpenAI en el servidor");
+      setStage("contexto", "done", "Tu pregunta y " + plural(count, "fragmento") + ", listos para el modelo");
+      setStage("responder", "skipped", "Necesita una clave de OpenAI en el servidor");
       ui.resultSummary.hidden = true;
       ui.noModelPanel.hidden = false;
+      ui.contextTitle.textContent = "Esto es lo que recibiría el modelo";
+      ui.contextNote.textContent = "En esta demo no se envía: el servidor no tiene una clave de OpenAI.";
+      ui.answerButton.hidden = true;
     }
     announce(plural(count, "fragmento encontrado", "fragmentos encontrados") + ".");
   } else {
+    /* Sin fragmentos el servidor se abstiene sin llamar al modelo (generar_respuesta). */
     setStage("recuperar", "done", "Ningún fragmento coincide");
-    setStage("contexto", "skipped", "Sin fragmentos, no hay nada que enviar");
-    setStage("responder", "skipped", "Sin evidencia, no hay respuesta");
-    ui.answerTitle.textContent = hybrid ? "La búsqueda híbrida no encontró fragmentos" : "La búsqueda por palabras no encontró fragmentos";
-    let summary = hybrid ?
-      "Nada en el proyecto se parece lo suficiente a tu pregunta." :
-      "Ninguna parte del proyecto comparte palabras con tu pregunta.";
-    summary += " Cuando no hay evidencia, el sistema no responde.";
-    if (!hybrid) summary += session.modelAvailable ? " Podés probar la búsqueda híbrida, que también busca por significado." : " Probá con otras palabras.";
-    ui.resultSummary.textContent = summary;
+    setStage("contexto", "skipped", "Sin fragmentos, no hay nada que armar");
+    setStage("responder", "abstained", "No respondió, por falta de evidencia");
+    ui.answerTitle.textContent = "Respuesta";
+    ui.resultSummary.hidden = true;
+    let text = (hybrid ?
+      "La búsqueda híbrida no encontró nada que se parezca lo suficiente a tu pregunta." :
+      "La búsqueda por palabras no encontró ninguna parte del proyecto que comparta palabras con tu pregunta.") +
+      " Sin evidencia, el sistema no responde: prefiere no inventar.";
+    if (!hybrid && session.modelAvailable) text += " Si creés que la respuesta sí está, probá la búsqueda híbrida, que también busca por significado.";
+    ui.answer.replaceChildren(abstentionBox("No hay evidencia para responder esto", text));
+    ui.answer.hidden = false;
+    ui.sourcesTitle.firstChild.textContent = "Lo que encontró la búsqueda ";
     if (!hybrid && session.modelAvailable && session.question.includes("¿")) {
       ui.translatePreview.textContent = session.question;
       ui.translatePanel.hidden = false;
     }
-    announce("No se encontraron fragmentos.");
+    announce("No se encontraron fragmentos. El sistema no responde sin evidencia.");
   }
   revealIfNeeded(ui.stages);
+  ui.answerStage.focus({ preventScroll: true });
 }
 
 /* ---------- acciones ---------- */
@@ -533,9 +567,14 @@ async function ensureCollection(mode) {
   if (session.id && session.mode === mode && session.origin === origin) return null;
   await discardPendingHybrid();
   if (session.id) {
+    const wasUpload = session.origin === "carga";
     try { await api("/colecciones/" + session.id, { method: "DELETE" }); }
     catch { /* La colección también puede haber vencido. */ }
     session.id = null;
+    if (wasUpload) {
+      ui.deleteUpload.hidden = true;
+      ui.uploadSummary.textContent = filesSummary();
+    }
   }
   const created = await createCollection(mode);
   session.id = created.coleccion_id;
@@ -631,10 +670,15 @@ async function translateQuestion() {
     const translated = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/traduccion", {
       method: "POST", body: JSON.stringify({ autorizacion: "ENVIAR" })
     });
+    session.matchQuestion = translated.consulta_ingles || null;
     renderSources(translated.fuentes, translated.tiempos.recuperacion);
     showNextSteps();
     ui.translatePanel.hidden = true;
-    if (!translated.fuentes.length) status("La pregunta traducida tampoco encontró fragmentos. Probá con otras palabras.", false);
+    if (translated.consulta_ingles) {
+      const note = "Buscó con la pregunta traducida: «" + translated.consulta_ingles + "».";
+      if (translated.fuentes.length) { ui.resultSummary.hidden = false; ui.resultSummary.textContent = note + " " + ui.resultSummary.textContent; }
+      else status(note + " Tampoco encontró fragmentos.", false);
+    }
   } catch (error) {
     setStage("recuperar", "done", "Ningún fragmento coincide");
     status("No se pudo traducir la pregunta: " + error.message, true);
@@ -703,6 +747,7 @@ async function runHybrid() {
     session.queryId = query.consulta_id;
     session.pendingHybrid = null;
     session.previousKeys = previousKeys;
+    session.matchQuestion = null;
     ui.hybridPanel.hidden = true;
     renderSources(query.fuentes, query.tiempos.recuperacion);
     showNextSteps();
@@ -783,6 +828,7 @@ ui.deleteUpload.addEventListener("click", async () => {
     ui.uploadSummary.textContent = filesSummary();
     clearResults();
     status("Tus archivos se borraron del servidor.", false);
+    ui.question.focus();
   } catch (error) { status(error.message, true); }
 });
 

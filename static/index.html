@@ -91,7 +91,7 @@
             </span>
             <span class="etapa-cuerpo">
               <strong>Armar el contexto</strong>
-              <span class="etapa-texto" data-default="Junta tu pregunta y esos fragmentos. Ves exactamente qué recibiría el modelo antes de enviarlo.">Junta tu pregunta y esos fragmentos. Ves exactamente qué recibiría el modelo antes de enviarlo.</span>
+              <span class="etapa-texto" data-default="Junta tu pregunta y esos fragmentos. Ves qué recibiría el modelo antes de enviarlo.">Junta tu pregunta y esos fragmentos. Ves qué recibiría el modelo antes de enviarlo.</span>
             </span>
           </li>
           <li class="etapa" data-stage="responder" data-state="idle">
@@ -117,27 +117,28 @@
             <p id="resultSummary" class="respuesta-resumen"></p>
             <div id="answer" class="respuesta-cuerpo" hidden></div>
 
-            <div id="sendPanel" class="contexto" hidden>
-              <h3>Esto es lo que recibirá el modelo</h3>
-              <ul id="contextList" class="contexto-lista"></ul>
-              <details id="sendDetails" class="desplegable">
-                <summary>Ver el texto completo que se envía</summary>
-                <div id="sendPreview" class="contexto-texto"></div>
-              </details>
-              <p class="contexto-nota">Nada sale de este servidor hasta que tocás el botón.</p>
-              <button id="answerButton" type="button" class="boton-principal">Enviar a OpenAI y responder</button>
-            </div>
-
             <div id="noModelPanel" class="aviso" hidden>
               <strong>Ya viste la primera mitad de RAG</strong>
               <p>Esta demo está en modo solo búsqueda: no tiene una clave de OpenAI configurada. Los fragmentos que encontró la búsqueda son los que recibiría el modelo para responder. Para ver la respuesta con citas, corré el proyecto con tu propia clave.</p>
               <a href="https://github.com/NicolasIgles/codebase-explorer-rag#probar-en-local" target="_blank" rel="noopener noreferrer">Cómo correrlo en tu máquina</a>
             </div>
 
+            <div id="sendPanel" class="contexto" hidden>
+              <h3 id="contextTitle">Esto es lo que recibirá el modelo</h3>
+              <ul id="contextList" class="contexto-lista"></ul>
+              <details id="sendDetails" class="desplegable">
+                <summary>Ver el texto tal cual se envía</summary>
+                <div id="sendPreview" class="contexto-texto" tabindex="0" aria-label="Texto que se envía al modelo"></div>
+              </details>
+              <p id="contextNote" class="contexto-nota">Nada sale de este servidor hasta que tocás el botón.</p>
+              <button id="answerButton" type="button" class="boton-principal">Enviar a OpenAI y responder</button>
+            </div>
+
+
             <div id="translatePanel" class="contexto" hidden>
               <h3>Probar con la pregunta en inglés</h3>
               <p>El código del proyecto está escrito en inglés, así que una pregunta en castellano puede no compartir palabras con él. Podés traducirla con OpenAI y buscar de nuevo. Solo se envía tu pregunta, ningún archivo.</p>
-              <details class="desplegable"><summary>Ver lo que se envía</summary><pre id="translatePreview" class="contexto-texto"></pre></details>
+              <details class="desplegable"><summary>Ver lo que se envía</summary><pre id="translatePreview" class="contexto-texto" tabindex="0" aria-label="Pregunta que se envía para traducir"></pre></details>
               <button id="translateButton" type="button" class="boton-secundario">Traducir la pregunta y buscar de nuevo</button>
             </div>
 
@@ -157,10 +158,10 @@
             </div>
           </section>
 
-          <aside class="hallazgos" aria-labelledby="sourcesTitle">
+          <section class="hallazgos" aria-labelledby="sourcesTitle">
             <h2 id="sourcesTitle">Lo que encontró la búsqueda <span id="resultCount"></span></h2>
             <div id="sources" class="fragmentos"></div>
-          </aside>
+          </section>
 
           <p id="resultFoot" class="pie-resultado"></p>
         </div>
@@ -226,7 +227,7 @@
               <button type="button" class="metrica" data-metric="negative" aria-pressed="false">Nada cuando no hay respuesta</button>
             </div>
           </div>
-          <p id="benchmarkTitle" class="comparativa-pregunta"></p>
+          <p id="benchmarkTitle" class="comparativa-pregunta" aria-live="polite"></p>
           <div id="benchmarkChart" class="grafico"></div>
           <p id="benchmarkNote" class="comparativa-nota"></p>
           <details class="desplegable detalle-tecnico">
@@ -253,7 +254,7 @@
       <dl class="envios">
         <div><dt>Buscar en el proyecto</dt><dd>No envía nada. Ordena los fragmentos en este servidor.</dd></div>
         <div><dt>Enviar a OpenAI y responder</dt><dd>Envía tu pregunta y los fragmentos que ves en «Armar el contexto».</dd></div>
-        <div><dt>Búsqueda híbrida</dt><dd>Con el ejemplo, solo tu pregunta: el índice ya está preparado. Con tus archivos, también el texto permitido de esos archivos, para calcular sus vectores.</dd></div>
+        <div><dt>Búsqueda híbrida</dt><dd>Con el ejemplo, solo tu pregunta cuando su índice ya está preparado; si no, también el texto del ejemplo. Con tus archivos, también el texto permitido de esos archivos, para calcular sus vectores.</dd></div>
         <div><dt>Traducir la pregunta</dt><dd>Solo tu pregunta.</dd></div>
       </dl>
       <p class="limites">El ejemplo es público y ficticio. Tus archivos se borran en menos de 24 horas, o antes si el servicio gratuito se duerme o reinicia. Antes de enviar algo a OpenAI, un filtro deja afuera los archivos con nombres sensibles (como secrets, credentials o archivos ocultos) y los que parecen contener claves.</p>

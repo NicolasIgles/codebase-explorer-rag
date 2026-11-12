@@ -75,6 +75,8 @@ h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.08; font-weight: 800; l
 .origen { display: inline-flex; padding: 3px; background: var(--papel); border: 1px solid var(--regla); border-radius: 12px; }
 .origen-boton { min-height: 40px; padding: 0 16px; font-size: 15px; font-weight: 700; color: var(--grafito); background: none; border: 0; border-radius: 9px; transition: background-color .2s, color .2s; }
 .origen-boton[aria-pressed="true"] { color: #fff; background: var(--tinta); }
+.origen-boton:focus-visible { outline-offset: -3px; }
+.origen-boton[aria-pressed="true"]:focus-visible { outline-color: #fff; }
 .modo-demo { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--grafito); }
 .modo-demo::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--regla-fuerte); }
 .modo-demo[data-model="si"]::before { background: var(--palabras); }
@@ -223,6 +225,9 @@ h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.08; font-weight: 800; l
 .ln { flex: none; width: 3.4em; padding-right: 12px; text-align: right; color: var(--grafito); user-select: none; }
 .lc { white-space: pre; }
 .codigo-texto .linea { min-width: 0; }
+.fragmento .codigo .linea { min-width: 0; }
+.fragmento .codigo .lc { white-space: pre-wrap; overflow-wrap: anywhere; }
+.fragmento .codigo { overflow-x: hidden; }
 .codigo-texto { font-family: var(--texto); font-size: 15px; line-height: 1.55; }
 .codigo-texto .lc { white-space: pre-wrap; overflow-wrap: anywhere; }
 .codigo-mas { padding: 2px 14px 2px calc(3.4em + 0px); font-family: var(--texto); font-size: 14px; color: var(--grafito); }
