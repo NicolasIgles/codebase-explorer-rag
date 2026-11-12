@@ -1,92 +1,86 @@
 "use strict";
 
+const $ = id => document.getElementById(id);
 const ui = {
-  apiState: document.getElementById("apiState"),
-  suggestions: document.getElementById("suggestions"),
-  question: document.getElementById("question"),
-  counter: document.getElementById("counter"),
-  searchButton: document.getElementById("searchButton"),
-  emptyState: document.getElementById("emptyState"),
-  status: document.getElementById("status"),
-  scope: document.getElementById("scope"),
-  results: document.getElementById("results"),
-  answerStage: document.getElementById("answerStage"),
-  resultSummary: document.getElementById("resultSummary"),
-  sourcesSection: document.getElementById("sourcesSection"),
-  resultCount: document.getElementById("resultCount"),
-  sources: document.getElementById("sources"),
-  answer: document.getElementById("answer"),
-  resultFoot: document.getElementById("resultFoot"),
-  sendPanel: document.getElementById("sendPanel"),
-  sendSummary: document.getElementById("sendSummary"),
-  sendDetails: document.getElementById("sendDetails"),
-  sendPreview: document.getElementById("sendPreview"),
-  answerButton: document.getElementById("answerButton"),
-  translatePanel: document.getElementById("translatePanel"),
-  translatePreview: document.getElementById("translatePreview"),
-  translateButton: document.getElementById("translateButton"),
-  hybridArea: document.getElementById("hybridArea"),
-  hybridButton: document.getElementById("hybridButton"),
-  hybridPanel: document.getElementById("hybridPanel"),
-  hybridTitle: document.getElementById("hybridTitle"),
-  hybridSummary: document.getElementById("hybridSummary"),
-  hybridDetailsLabel: document.getElementById("hybridDetailsLabel"),
-  hybridQuestion: document.getElementById("hybridQuestion"),
-  indexButton: document.getElementById("indexButton"),
-  cancelIndex: document.getElementById("cancelIndex"),
-  sourceDialog: document.getElementById("sourceDialog"),
-  sourceKind: document.getElementById("sourceKind"),
-  sourceTitle: document.getElementById("sourceTitle"),
-  sourceLocation: document.getElementById("sourceLocation"),
-  sourceCode: document.getElementById("sourceCode"),
-  closeSource: document.getElementById("closeSource"),
-  closeSourceTop: document.getElementById("closeSourceTop")
-  ,useExample: document.getElementById("useExample")
-  ,useUpload: document.getElementById("useUpload")
-  ,uploadPanel: document.getElementById("uploadPanel")
-  ,uploadFiles: document.getElementById("uploadFiles")
-  ,uploadSummary: document.getElementById("uploadSummary")
-  ,deleteUpload: document.getElementById("deleteUpload")
-  ,collectionHint: document.getElementById("collectionHint")
+  apiState: $("apiState"),
+  menuButton: $("menuButton"),
+  mainNav: $("mainNav"),
+  useExample: $("useExample"),
+  useUpload: $("useUpload"),
+  uploadPanel: $("uploadPanel"),
+  uploadFiles: $("uploadFiles"),
+  uploadSummary: $("uploadSummary"),
+  deleteUpload: $("deleteUpload"),
+  queryForm: $("queryForm"),
+  questionLabel: $("questionLabel"),
+  collectionHint: $("collectionHint"),
+  question: $("question"),
+  searchButton: $("searchButton"),
+  counter: $("counter"),
+  suggestionsWrap: $("suggestionsWrap"),
+  suggestions: $("suggestions"),
+  stages: $("stages"),
+  status: $("status"),
+  announcer: $("announcer"),
+  results: $("results"),
+  answerStage: $("answerStage"),
+  answerTitle: $("answerTitle"),
+  resultSummary: $("resultSummary"),
+  answer: $("answer"),
+  sendPanel: $("sendPanel"),
+  contextList: $("contextList"),
+  sendDetails: $("sendDetails"),
+  sendPreview: $("sendPreview"),
+  answerButton: $("answerButton"),
+  noModelPanel: $("noModelPanel"),
+  translatePanel: $("translatePanel"),
+  translatePreview: $("translatePreview"),
+  translateButton: $("translateButton"),
+  modeRow: $("modeRow"),
+  modeTag: $("modeTag"),
+  hybridButton: $("hybridButton"),
+  hybridPanel: $("hybridPanel"),
+  hybridTitle: $("hybridTitle"),
+  hybridSummary: $("hybridSummary"),
+  hybridDetailsLabel: $("hybridDetailsLabel"),
+  hybridQuestion: $("hybridQuestion"),
+  scope: $("scope"),
+  indexButton: $("indexButton"),
+  cancelIndex: $("cancelIndex"),
+  sourcesTitle: $("sourcesTitle"),
+  resultCount: $("resultCount"),
+  sources: $("sources"),
+  resultFoot: $("resultFoot"),
+  sourceDialog: $("sourceDialog"),
+  sourceKind: $("sourceKind"),
+  sourceTitle: $("sourceTitle"),
+  sourceLocation: $("sourceLocation"),
+  sourceCode: $("sourceCode"),
+  closeSource: $("closeSource"),
+  closeSourceTop: $("closeSourceTop")
 };
 
-let session = { id: null, mode: null, origin: null, selectedOrigin: "ejemplo", queryId: null, sources: [], question: "", pendingHybrid: null, previousActions: null, modelAvailable: false, indexAvailable: false, busy: false };
-const modalFocus = new WeakMap();
+const session = {
+  id: null, mode: null, origin: null, selectedOrigin: "ejemplo",
+  queryId: null, sources: [], cited: [], question: "", pendingHybrid: null,
+  previousActions: null, previousKeys: null, modelAvailable: false,
+  indexAvailable: false, busy: false, suggestions: []
+};
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const scrollBehavior = () => (reduceMotion.matches ? "auto" : "smooth");
 
-function showOverlay(overlay) {
-  modalFocus.set(overlay, document.activeElement);
-  overlay.hidden = false;
-  overlay.querySelector(".rag-close").focus();
+/* ---------- utilidades ---------- */
+
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
 }
 
-function hideOverlay(overlay) {
-  overlay.hidden = true;
-  const previous = modalFocus.get(overlay);
-  if (previous && previous.isConnected && !previous.disabled) previous.focus();
-  else ui.question.focus();
+function plural(n, singular, pluralForm) {
+  return n + " " + (n === 1 ? singular : (pluralForm || singular + "s"));
 }
-
-document.addEventListener("keydown", event => {
-  const overlay = ui.sourceDialog.hidden ? null : ui.sourceDialog;
-  if (!overlay) return;
-  if (event.key === "Escape") {
-    event.preventDefault();
-    hideOverlay(overlay);
-    return;
-  }
-  if (event.key !== "Tab") return;
-  const buttons = Array.from(overlay.querySelectorAll("button:not([disabled])"));
-  if (!buttons.includes(document.activeElement)) {
-    event.preventDefault();
-    buttons[0].focus();
-  } else if (event.shiftKey && document.activeElement === buttons[0]) {
-    event.preventDefault();
-    buttons[buttons.length - 1].focus();
-  } else if (!event.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
-    event.preventDefault();
-    buttons[0].focus();
-  }
-});
 
 async function api(path, options) {
   const settings = Object.assign({}, options || {});
@@ -103,75 +97,435 @@ async function api(path, options) {
   return data;
 }
 
+function announce(message) {
+  ui.announcer.textContent = "";
+  window.setTimeout(() => { ui.announcer.textContent = message; }, 30);
+}
+
 function status(message, error) {
-  ui.status.textContent = message;
+  ui.status.textContent = message || "";
   ui.status.classList.toggle("error", Boolean(error));
+  ui.status.setAttribute("role", error ? "alert" : "status");
   ui.status.hidden = !message;
+  if (message && error) {
+    ui.status.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+    ui.status.focus({ preventScroll: true });
+  }
 }
 
-function setBusy(value) {
-  session.busy = value;
-  ui.searchButton.disabled = value;
-  ui.question.disabled = value;
-  ui.uploadFiles.disabled = value;
-  ui.useExample.disabled = value;
-  ui.useUpload.disabled = value;
-  ui.searchButton.firstChild.textContent = value ? "Consultando… " : "Buscar fuentes ";
-  [ui.answerButton, ui.translateButton, ui.hybridButton, ui.indexButton, ui.cancelIndex].forEach(button => { button.disabled = value; });
+function revealIfNeeded(node) {
+  const box = node.getBoundingClientRect();
+  if (box.top < 0 || box.top > window.innerHeight * 0.75)
+    node.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
 }
 
-function locationOf(source) {
+function replay(node, className) {
+  node.classList.remove(className);
+  void node.offsetWidth;
+  node.classList.add(className);
+}
+
+/* ---------- etapas ---------- */
+
+function setStage(name, state, text) {
+  const stage = ui.stages.querySelector('[data-stage="' + name + '"]');
+  const label = stage.querySelector(".etapa-texto");
+  stage.dataset.state = state;
+  label.textContent = text || label.dataset.default;
+}
+
+function resetStages() {
+  ["recuperar", "contexto", "responder"].forEach(name => setStage(name, "idle"));
+}
+
+function stopIntro() {
+  ui.stages.classList.remove("intro");
+}
+
+/* ---------- fragmentos: líneas, coincidencias y relevancia ---------- */
+
+const COMUNES = new Set(("a al algo alguien como con cual cuales cuando de del donde el en es esta este funcion hay la las lo los para por que quien se si su un una y " +
+  "an and are by class does for from function how in into is method of the to where which with").split(" "));
+const ALIAS = { entero: "int", enteros: "int", integer: "int", integers: "int", urls: "url", timed: "timestamp", timestamps: "timestamp" };
+
+function normalize(text) {
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+
+function words(text) {
+  const split = String(text || "")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ");
+  return (normalize(split).match(/[a-z0-9]+/g) || [])
+    .filter(word => word.length >= 3 && !COMUNES.has(word))
+    .map(word => ALIAS[word] || word);
+}
+
+function sameWord(a, b) {
+  return a === b || (a.length >= 5 && b.length >= 5 && a.slice(0, 5) === b.slice(0, 5));
+}
+
+/* Replica la comparación de la búsqueda por palabras para explicar por qué apareció cada fragmento. */
+function matchedTerms(question, source) {
+  const original = {};
+  (question.match(/[\p{L}\p{N}_]+/gu) || []).forEach(token => {
+    words(token).forEach(word => { if (!original[word]) original[word] = token.toLowerCase(); });
+  });
+  const terms = Array.from(new Set(words(question)));
+  const pool = words([source.contenedor, source.simbolo, source.descripcion, source.codigo, source.ruta].join(" "));
+  return terms.filter(term => pool.some(word => sameWord(term, word))).map(term => original[term] || term);
+}
+
+function parseLines(source) {
+  const raw = String(source.codigo || source.texto || "").split("\n");
+  const start = Number(source.inicio) || 1;
+  return raw.map((line, index) => {
+    const match = line.match(/^(\d+): ?(.*)$/);
+    return match ? { n: Number(match[1]), text: match[2] } : { n: start + index, text: line };
+  });
+}
+
+function placeOf(source) {
   const place = source.ubicacion || {};
-  const base = place.tipo === "pagina" ?
-    source.ruta + " · página " + place.pagina :
-    source.ruta + " · líneas " + source.inicio + "–" + source.fin;
-  return place.columna_inicio ? base + " · columnas " + place.columna_inicio + "–" + place.columna_fin : base;
+  if (place.tipo === "pagina") return "página " + place.pagina;
+  if (source.inicio === source.fin) return "línea " + source.inicio;
+  return "líneas " + source.inicio + "–" + source.fin;
 }
 
-function clearResults() {
-  ui.emptyState.hidden = true;
-  ui.results.hidden = true;
-  ui.hybridArea.hidden = true;
-  ui.hybridPanel.hidden = true;
-  ui.hybridButton.hidden = false;
-  ui.hybridQuestion.textContent = "";
+function shortPlace(source) {
+  const place = source.ubicacion || {};
+  if (place.tipo === "pagina") return "p. " + place.pagina;
+  return source.inicio === source.fin ? String(source.inicio) : source.inicio + "–" + source.fin;
+}
+
+function kindOf(source) {
+  if (source.tipo_fuente === "documento") return "Documento";
+  const kinds = { funcion: "Función", metodo: "Método", clase: "Clase", variable: "Variable" };
+  return kinds[source.tipo] || "Código";
+}
+
+function sourceKey(source) {
+  return source.ruta + ":" + source.inicio + "-" + source.fin;
+}
+
+function relevanceText(index, ratio) {
+  if (index === 0) return "La más relevante";
+  if (ratio >= 0.6) return "Casi tan relevante";
+  if (ratio >= 0.3) return "Menos relevante";
+  return "Mucho menos relevante";
+}
+
+function codeBlock(lines, isText, limit) {
+  const block = el("div", "codigo" + (isText ? " codigo-texto" : ""));
+  const shown = limit ? lines.slice(0, limit) : lines;
+  shown.forEach((line, j) => {
+    const row = el("div", "linea");
+    row.style.setProperty("--j", j);
+    row.append(el("span", "ln", String(line.n)), el("span", "lc", line.text || " "));
+    block.append(row);
+  });
+  if (limit && lines.length > limit)
+    block.append(el("div", "codigo-mas", plural(lines.length - limit, "línea más", "líneas más")));
+  return block;
+}
+
+function renderSources(sources, seconds) {
+  session.sources = sources;
+  session.cited = [];
+  ui.results.hidden = false;
+  ui.sourcesTitle.firstChild.textContent = "Lo que encontró la búsqueda ";
+  ui.resultCount.textContent = sources.length ? "(" + sources.length + ")" : "";
+  ui.sources.replaceChildren();
+  if (!sources.length) {
+    ui.sources.append(el("p", "fragmentos-vacio", "Ningún fragmento del proyecto coincide con tu pregunta."));
+  }
+  const top = Math.max(...sources.map(s => Number(s.puntuacion) || 0), 0);
+  const previous = session.previousKeys;
+  sources.forEach((source, index) => {
+    const card = el("article", "fragmento");
+    card.id = "fragmento-" + (index + 1);
+    card.style.setProperty("--i", index);
+    card.setAttribute("aria-label", "Fragmento " + (index + 1) + ": " + source.ruta + ", " + placeOf(source));
+
+    const head = el("div", "fragmento-cabeza");
+    const path = el("span", "fragmento-ruta", source.ruta + " ");
+    path.append(el("span", "", placeOf(source)));
+    const badges = el("span", "insignias");
+    if (previous && !previous.has(sourceKey(source))) badges.append(el("span", "insignia insignia-nueva", "Nueva con la híbrida"));
+    head.append(path, badges);
+
+    const name = el("p", "fragmento-simbolo", "Fragmento " + (index + 1) + ". " + kindOf(source) + " " + (source.titulo || source.simbolo));
+    const isText = source.tipo_fuente === "documento";
+    const allLines = parseLines(source);
+    const previewLines = isText ? allLines.filter(line => line.text.trim()) : allLines;
+    const block = codeBlock(previewLines, isText, isText ? 3 : 6);
+    const reason = el("p", "razon");
+    const terms = matchedTerms(session.question, source);
+    if (terms.length) {
+      reason.append("Por qué apareció: coincide con ");
+      terms.slice(0, 4).forEach((term, i, list) => {
+        if (i > 0) reason.append(i === list.length - 1 ? " y " : ", ");
+        reason.append(el("mark", "termino", term));
+      });
+      if (session.mode === "completo") reason.append(", y se parece en significado");
+    } else {
+      reason.append(session.mode === "completo" ? "Por qué apareció: se parece en significado a tu pregunta" : "Por qué apareció: coincide con partes del nombre o la ruta");
+    }
+
+    const ratio = top > 0 ? (Number(source.puntuacion) || 0) / top : 0;
+    const meter = el("div", "relevancia");
+    const track = el("div", "relevancia-pista");
+    const bar = el("div", "relevancia-barra" + (ratio < 0.3 ? " baja" : ""));
+    bar.style.setProperty("--i", index);
+    bar.dataset.width = Math.max(4, Math.round(ratio * 100)) + "%";
+    track.append(bar);
+    meter.append(track, el("span", "relevancia-texto", relevanceText(index, ratio)));
+
+    const more = el("button", "boton-texto ver-completo", "Ver el fragmento completo");
+    more.type = "button";
+    more.addEventListener("click", () => openSource(index + 1));
+
+    card.append(head, name, block, reason, meter, more);
+    ui.sources.append(card);
+  });
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ui.sources.querySelectorAll(".relevancia-barra").forEach(bar => { bar.style.width = bar.dataset.width; });
+  }));
+  ui.resultFoot.textContent = "La búsqueda tardó " + formatSeconds(seconds) + " en este servidor. Revisá las líneas citadas antes de dar una respuesta por buena.";
+}
+
+function formatSeconds(seconds) {
+  const value = Number(seconds || 0);
+  if (value < 1) return Math.max(1, Math.round(value * 1000)).toLocaleString("es-AR") + " ms";
+  return value.toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " s";
+}
+
+function markCited(numbers) {
+  session.cited = numbers;
+  const cited = new Set(numbers);
+  ui.sources.querySelectorAll(".fragmento").forEach((card, index) => {
+    const isCited = cited.has(index + 1);
+    card.classList.toggle("citado", isCited);
+    card.classList.toggle("no-citado", !isCited);
+    const badges = card.querySelector(".insignias");
+    badges.querySelectorAll(".insignia-citado, .insignia-sin").forEach(node => node.remove());
+    badges.prepend(isCited ? el("span", "insignia insignia-citado", "Citado") : el("span", "insignia insignia-sin", "No citado"));
+    if (isCited) card.querySelectorAll(".linea").forEach(line => line.classList.add("marcada"));
+  });
+}
+
+function focusSource(number) {
+  const card = $("fragmento-" + number);
+  if (!card) return;
+  card.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+  replay(card, "destello");
+  card.querySelectorAll(".linea").forEach(line => line.classList.remove("marcada"));
+  void card.offsetWidth;
+  card.querySelectorAll(".linea").forEach(line => line.classList.add("marcada"));
+}
+
+/* ---------- diálogo de fragmento ---------- */
+
+let lastFocus = null;
+async function openSource(number) {
+  if (!session.id || !session.queryId) return;
+  try {
+    const data = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/fuentes/" + number);
+    const source = data.fuente;
+    const cited = session.cited.includes(number);
+    ui.sourceKind.textContent = "Fragmento " + number + (cited ? ", citado en la respuesta" : "");
+    ui.sourceTitle.textContent = source.titulo || source.simbolo;
+    ui.sourceLocation.textContent = source.ruta + ", " + placeOf(source);
+    ui.sourceCode.replaceChildren(...codeBlock(parseLines(source), source.tipo_fuente === "documento").childNodes);
+    ui.sourceCode.classList.toggle("codigo-texto", source.tipo_fuente === "documento");
+    lastFocus = document.activeElement;
+    ui.sourceDialog.showModal();
+    ui.closeSourceTop.focus();
+    if (cited) requestAnimationFrame(() => ui.sourceCode.querySelectorAll(".linea").forEach(line => line.classList.add("marcada")));
+  } catch (error) {
+    status(error.message, true);
+  }
+}
+
+function closeSource() { ui.sourceDialog.close(); }
+ui.closeSource.addEventListener("click", closeSource);
+ui.closeSourceTop.addEventListener("click", closeSource);
+ui.sourceDialog.addEventListener("click", event => { if (event.target === ui.sourceDialog) closeSource(); });
+ui.sourceDialog.addEventListener("close", () => {
+  if (lastFocus && lastFocus.isConnected && !lastFocus.disabled) lastFocus.focus();
+});
+
+/* ---------- respuesta ---------- */
+
+function renderAnswer(data) {
+  ui.answer.replaceChildren();
   ui.sendPanel.hidden = true;
   ui.translatePanel.hidden = true;
+  const total = session.sources.length;
+  if (data.abstencion) {
+    ui.answerTitle.textContent = "Respuesta";
+    ui.resultSummary.textContent = "";
+    ui.resultSummary.hidden = true;
+    const box = el("div", "abstencion");
+    box.append(
+      el("h3", "", "No hay evidencia para responder esto"),
+      el("p", "", "Ninguno de los fragmentos encontrados contesta la pregunta. En lugar de inventar, el modelo prefirió no responder: es lo que tiene que hacer un buen sistema RAG.")
+    );
+    const actions = el("div", "botonera");
+    const again = el("button", "boton-principal", "Hacer otra pregunta");
+    again.type = "button";
+    again.addEventListener("click", () => { ui.question.focus(); ui.question.select(); });
+    actions.append(again);
+    const good = session.suggestions.find(item => item.id === "codigo");
+    if (good && session.selectedOrigin === "ejemplo") {
+      const example = el("button", "boton-secundario", "Ver una que sí tiene respuesta");
+      example.type = "button";
+      example.addEventListener("click", () => runSuggestion(good));
+      actions.append(example);
+    }
+    box.append(actions);
+    ui.answer.append(box);
+    ui.sourcesTitle.firstChild.textContent = "Lo más cercano que encontró ";
+    markCited([]);
+    setStage("responder", "abstained", "No respondió, por falta de evidencia");
+    announce("El modelo no respondió porque los fragmentos no alcanzan.");
+  } else {
+    const citas = (data.citas || []).filter(n => n >= 1 && n <= total);
+    ui.answerTitle.textContent = "Respuesta";
+    ui.resultSummary.hidden = false;
+    ui.resultSummary.textContent = "Basada en " + citas.length + " de " + plural(total, "fragmento encontrado", "fragmentos encontrados") + ". Tocá una cita para ver las líneas que la sostienen.";
+    const text = el("p", "respuesta-texto", data.respuesta);
+    const chips = el("p", "citas");
+    chips.append(el("span", "", citas.length === 1 ? "Fuente citada" : "Fuentes citadas"));
+    citas.forEach((number, i) => {
+      const source = session.sources[number - 1];
+      const chip = el("button", "cita", source.ruta.split("/").pop() + " " + shortPlace(source));
+      chip.type = "button";
+      chip.style.setProperty("--i", i);
+      chip.setAttribute("aria-label", "Cita " + number + ": " + source.ruta + ", " + placeOf(source) + ". Mostrar el fragmento");
+      chip.addEventListener("click", () => { focusSource(number); replay(chip, "marcada"); });
+      chips.append(chip);
+    });
+    ui.answer.append(text, chips);
+    markCited(citas);
+    requestAnimationFrame(() => requestAnimationFrame(() => chips.querySelectorAll(".cita").forEach(chip => chip.classList.add("marcada"))));
+    setStage("responder", "done", "Usó " + citas.length + " de los " + plural(total, "fragmento"));
+    announce("Respuesta lista. " + data.respuesta);
+  }
+  ui.answer.hidden = false;
+  ui.answerStage.focus({ preventScroll: true });
+  revealIfNeeded(ui.answerStage);
+  if (data.tiempos && Number(data.tiempos.modelo || 0) > 0)
+    ui.resultFoot.textContent += " El modelo tardó " + formatSeconds(data.tiempos.modelo) + ".";
+}
+
+/* ---------- contexto para el modelo ---------- */
+
+function showContext() {
+  ui.contextList.replaceChildren();
+  const addRow = (label, value, isPath) => {
+    const item = el("li");
+    item.append(el("span", "rotulo", label), el("span", isPath ? "ruta" : "", value));
+    ui.contextList.append(item);
+  };
+  addRow("Pregunta", session.question);
+  session.sources.forEach((source, index) => addRow("Fragmento " + (index + 1), source.ruta + ", " + placeOf(source), true));
+  addRow("Instrucción", "Responder solo con estos fragmentos e indicar cuáles usó. Si no alcanzan, no responder.");
+
+  const parts = ["Pregunta: " + session.question, "", "Fuentes:"];
+  session.sources.forEach((source, index) => {
+    parts.push("[" + (index + 1) + "] " + source.ruta + ", " + placeOf(source) + " (" + (source.simbolo || source.titulo) + ")");
+    parts.push(source.codigo || source.texto || "", "");
+  });
+  ui.sendPreview.textContent = parts.join("\n");
+}
+
+/* ---------- después de cada búsqueda ---------- */
+
+function clearResults() {
+  ui.results.hidden = true;
   ui.answer.hidden = true;
+  ui.answer.replaceChildren();
+  ui.sendPanel.hidden = true;
+  ui.noModelPanel.hidden = true;
+  ui.translatePanel.hidden = true;
+  ui.modeRow.hidden = true;
+  ui.hybridPanel.hidden = true;
+  ui.hybridQuestion.textContent = "";
   ui.sendDetails.open = false;
-  ui.sourcesSection.open = false;
   ui.sources.replaceChildren();
   ui.resultFoot.textContent = "";
+  ui.resultSummary.hidden = false;
   session.queryId = null;
   session.sources = [];
+  session.cited = [];
   session.question = "";
   session.previousActions = null;
+  session.previousKeys = null;
+  resetStages();
   status("", false);
 }
 
-function showScope(scope) {
-  if (!scope) {
-    ui.scope.hidden = true;
-    return;
+function showNextSteps() {
+  const count = session.sources.length;
+  const hybrid = session.mode === "completo";
+  session.previousActions = null;
+  ui.results.hidden = false;
+  ui.answer.hidden = true;
+  ui.sendPanel.hidden = true;
+  ui.noModelPanel.hidden = true;
+  ui.translatePanel.hidden = true;
+  ui.resultSummary.hidden = false;
+  ui.modeRow.hidden = false;
+  ui.modeTag.dataset.mode = hybrid ? "completo" : "acotado";
+  ui.modeTag.textContent = hybrid ? "Búsqueda híbrida: palabras y significado" : "Búsqueda por palabras";
+  ui.hybridButton.hidden = !session.modelAvailable || hybrid;
+  ui.stages.classList.add("con-resultado");
+
+  if (count) {
+    setStage("recuperar", "done", plural(count, "fragmento encontrado", "fragmentos encontrados") + (hybrid ? ", con palabras y significado" : ", en este servidor"));
+    ui.answerTitle.textContent = "Encontró " + plural(count, "fragmento");
+    if (session.modelAvailable) {
+      setStage("contexto", "waiting", "Revisá lo que recibiría el modelo");
+      ui.resultSummary.textContent = "Antes de responder, mirá exactamente qué recibiría el modelo y decidí si lo enviás.";
+      showContext();
+      ui.sendPanel.hidden = false;
+    } else {
+      setStage("contexto", "skipped", "Necesita OpenAI en el servidor");
+      setStage("responder", "skipped", "Necesita OpenAI en el servidor");
+      ui.resultSummary.hidden = true;
+      ui.noModelPanel.hidden = false;
+    }
+    announce(plural(count, "fragmento encontrado", "fragmentos encontrados") + ".");
+  } else {
+    setStage("recuperar", "done", "Ningún fragmento coincide");
+    setStage("contexto", "skipped", "Sin fragmentos, no hay nada que enviar");
+    setStage("responder", "skipped", "Sin evidencia, no hay respuesta");
+    ui.answerTitle.textContent = hybrid ? "La búsqueda híbrida no encontró fragmentos" : "La búsqueda por palabras no encontró fragmentos";
+    let summary = hybrid ?
+      "Nada en el proyecto se parece lo suficiente a tu pregunta." :
+      "Ninguna parte del proyecto comparte palabras con tu pregunta.";
+    summary += " Cuando no hay evidencia, el sistema no responde.";
+    if (!hybrid) summary += session.modelAvailable ? " Podés probar la búsqueda híbrida, que también busca por significado." : " Probá con otras palabras.";
+    ui.resultSummary.textContent = summary;
+    if (!hybrid && session.modelAvailable && session.question.includes("¿")) {
+      ui.translatePreview.textContent = session.question;
+      ui.translatePanel.hidden = false;
+    }
+    announce("No se encontraron fragmentos.");
   }
-  ui.scope.replaceChildren();
-  const heading = document.createElement("h4");
-  heading.textContent = "Alcance de la indexación";
-  const summary = document.createElement("p");
-  summary.textContent = scope.cantidad_fragmentos + " fragmentos de " + scope.rutas.length + " archivos; aproximadamente " + scope.bytes_aproximados + " bytes de texto.";
-  const list = document.createElement("ul");
-  scope.rutas.forEach(path => {
-    const item = document.createElement("li");
-    item.textContent = path;
-    list.append(item);
-  });
-  ui.scope.append(heading, summary, list);
-  const excluded = Object.keys(scope.excluidos || {});
-  if (excluded.length) {
-    const note = document.createElement("p");
-    note.textContent = excluded.length + " archivo(s) excluido(s) por el filtro de privacidad.";
-    ui.scope.append(note);
-  }
+  revealIfNeeded(ui.stages);
+}
+
+/* ---------- acciones ---------- */
+
+function setBusy(value) {
+  session.busy = value;
+  [ui.searchButton, ui.question, ui.uploadFiles, ui.useExample, ui.useUpload, ui.answerButton, ui.translateButton, ui.hybridButton, ui.indexButton, ui.cancelIndex]
+    .forEach(node => { node.disabled = value; });
+  ui.suggestions.querySelectorAll("button").forEach(node => { node.disabled = value; });
+  ui.searchButton.textContent = value ? "Buscando…" : "Buscar en el proyecto";
 }
 
 async function ensureCollection(mode) {
@@ -189,27 +543,22 @@ async function ensureCollection(mode) {
   session.origin = origin;
   session.queryId = null;
   ui.deleteUpload.hidden = origin !== "carga";
-  if (origin === "carga") ui.uploadSummary.textContent = filesSummary() + " · Colección lista; se borra antes de 24 horas o si el servicio se duerme o reinicia.";
+  if (origin === "carga") ui.uploadSummary.textContent = filesSummary() + ". Ya están en el servidor; se borran en menos de 24 horas.";
   return created;
 }
 
 async function createCollection(mode) {
-  const origin = session.selectedOrigin;
-  if (origin === "carga") {
+  if (session.selectedOrigin === "carga") {
     const files = Array.from(ui.uploadFiles.files);
-    if (!files.length) throw new Error("Elegí archivos antes de consultar tu colección.");
+    if (!files.length) throw new Error("Elegí al menos un archivo antes de buscar.");
     if (files.length > 5 || files.some(file => file.size > 10_000_000))
       throw new Error("Se admiten hasta cinco archivos de 10 MB cada uno.");
     const form = new FormData();
     form.append("modo", mode);
     files.forEach(file => form.append("archivos", file));
-    status("Preparando la colección temporal…", false);
     return api("/cargas/colecciones", { method: "POST", body: form });
-  } else {
-    return api("/ejemplo/colecciones", {
-      method: "POST", body: JSON.stringify({ modo: mode })
-    });
   }
+  return api("/ejemplo/colecciones", { method: "POST", body: JSON.stringify({ modo: mode }) });
 }
 
 async function discardPendingHybrid() {
@@ -220,28 +569,197 @@ async function discardPendingHybrid() {
   catch { /* Puede haber vencido mientras se revisaba el alcance. */ }
 }
 
+function releaseCollections() {
+  const ids = [session.id, session.pendingHybrid && session.pendingHybrid.coleccion_id].filter(Boolean);
+  ids.forEach(id => {
+    try { fetch("/colecciones/" + id, { method: "DELETE", keepalive: true }); }
+    catch { /* El servidor la libera al vencer. */ }
+  });
+}
+window.addEventListener("pagehide", releaseCollections);
+
 function filesSummary() {
   const files = Array.from(ui.uploadFiles.files);
-  return files.length ? files.map(file => file.name).join(" · ") : "No hay archivos seleccionados.";
+  return files.length ? files.map(file => file.name).join(", ") : "Todavía no elegiste archivos.";
 }
+
+async function search() {
+  if (session.busy) return;
+  const question = ui.question.value.trim();
+  stopIntro();
+  if (!question) { status("Escribí una pregunta para buscar en el proyecto.", true); ui.question.focus(); return; }
+  clearResults();
+  setBusy(true);
+  setStage("recuperar", "active", session.selectedOrigin === "carga" ? "Preparando tus archivos y buscando…" : "Buscando en el código y los documentos…");
+  try {
+    await ensureCollection("acotado");
+    const query = await api("/colecciones/" + session.id + "/consultas", {
+      method: "POST", body: JSON.stringify({ pregunta: question })
+    });
+    session.question = question;
+    session.queryId = query.consulta_id;
+    renderSources(query.fuentes, query.tiempos.recuperacion);
+    showNextSteps();
+  } catch (error) {
+    resetStages();
+    status(error.message, true);
+  } finally { setBusy(false); }
+}
+
+async function generateAnswer() {
+  if (session.busy || !session.queryId || !session.sources.length) return;
+  setBusy(true);
+  setStage("contexto", "done", "Enviaste tu pregunta y " + plural(session.sources.length, "fragmento") + " a OpenAI");
+  setStage("responder", "active", "Generando la respuesta y comprobando las citas…");
+  try {
+    const answer = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/respuesta", {
+      method: "POST", body: JSON.stringify({ autorizacion: session.mode === "completo" ? "INDEXAR" : "ENVIAR" })
+    });
+    renderAnswer(answer);
+  } catch (error) {
+    setStage("contexto", "waiting", "Revisá lo que recibiría el modelo");
+    setStage("responder", "idle");
+    status("No se pudo generar la respuesta: " + error.message, true);
+  } finally { setBusy(false); }
+}
+
+async function translateQuestion() {
+  if (session.busy || !session.queryId || session.sources.length) return;
+  setBusy(true);
+  setStage("recuperar", "active", "Traduciendo la pregunta y buscando de nuevo…");
+  try {
+    const translated = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/traduccion", {
+      method: "POST", body: JSON.stringify({ autorizacion: "ENVIAR" })
+    });
+    renderSources(translated.fuentes, translated.tiempos.recuperacion);
+    showNextSteps();
+    ui.translatePanel.hidden = true;
+    if (!translated.fuentes.length) status("La pregunta traducida tampoco encontró fragmentos. Probá con otras palabras.", false);
+  } catch (error) {
+    setStage("recuperar", "done", "Ningún fragmento coincide");
+    status("No se pudo traducir la pregunta: " + error.message, true);
+  } finally { setBusy(false); }
+}
+
+async function prepareHybrid() {
+  if (session.busy || !session.queryId || !session.modelAvailable) return;
+  setBusy(true);
+  try {
+    const created = await createCollection("completo");
+    session.pendingHybrid = created;
+    showScope(created.alcance);
+    const prepared = session.selectedOrigin === "ejemplo" && session.indexAvailable;
+    ui.hybridTitle.textContent = prepared ? "Comparar con la búsqueda híbrida" : "Preparar la búsqueda híbrida";
+    ui.hybridDetailsLabel.textContent = prepared ? "Ver la pregunta que se envía" : "Ver la pregunta y los archivos que se envían";
+    ui.hybridQuestion.textContent = "Pregunta que se envía: «" + session.question + "»";
+    ui.indexButton.textContent = prepared ? "Enviar la pregunta y buscar" : "Enviar los archivos y buscar";
+    ui.hybridSummary.textContent = prepared ?
+      "La búsqueda híbrida suma la comparación por significado. El índice del ejemplo ya está preparado: solo se envía tu pregunta a OpenAI para calcular su vector, los archivos no." :
+      "La búsqueda híbrida suma la comparación por significado. Para eso se envía a OpenAI el texto permitido de tus archivos, para calcular sus vectores, y tu pregunta. Revisá el detalle antes de autorizar.";
+    session.previousActions = {
+      send: !ui.sendPanel.hidden,
+      noModel: !ui.noModelPanel.hidden,
+      translate: !ui.translatePanel.hidden,
+      summary: ui.resultSummary.textContent
+    };
+    ui.sendPanel.hidden = true;
+    ui.translatePanel.hidden = true;
+    ui.hybridButton.hidden = true;
+    ui.hybridPanel.hidden = false;
+  } catch (error) { status(error.message, true); }
+  finally {
+    setBusy(false);
+    if (!ui.hybridPanel.hidden) ui.indexButton.focus();
+  }
+}
+
+function showScope(scope) {
+  ui.scope.replaceChildren();
+  if (!scope) { ui.scope.hidden = true; return; }
+  ui.scope.hidden = false;
+  ui.scope.append(el("p", "", plural(scope.cantidad_fragmentos, "fragmento") + " de " + plural(scope.rutas.length, "archivo") + ", unos " + Number(scope.bytes_aproximados).toLocaleString("es-AR") + " bytes de texto."));
+  const list = el("ul");
+  scope.rutas.forEach(path => list.append(el("li", "", path)));
+  ui.scope.append(list);
+  const excluded = Object.keys(scope.excluidos || {});
+  if (excluded.length) ui.scope.append(el("p", "", plural(excluded.length, "archivo excluido", "archivos excluidos") + " por el filtro de privacidad."));
+}
+
+async function runHybrid() {
+  if (session.busy || !session.pendingHybrid) return;
+  setBusy(true);
+  const next = session.pendingHybrid;
+  const previousKeys = new Set(session.sources.map(sourceKey));
+  setStage("recuperar", "active", "Buscando por palabras y por significado…");
+  setStage("contexto", "idle");
+  setStage("responder", "idle");
+  try {
+    const query = await api("/colecciones/" + next.coleccion_id + "/consultas", {
+      method: "POST", body: JSON.stringify({ pregunta: session.question, autorizacion: "INDEXAR" })
+    });
+    const oldId = session.id;
+    session.id = next.coleccion_id;
+    session.mode = "completo";
+    session.queryId = query.consulta_id;
+    session.pendingHybrid = null;
+    session.previousKeys = previousKeys;
+    ui.hybridPanel.hidden = true;
+    renderSources(query.fuentes, query.tiempos.recuperacion);
+    showNextSteps();
+    const added = query.fuentes.filter(source => !previousKeys.has(sourceKey(source))).length;
+    if (added) ui.resultSummary.textContent = "La búsqueda híbrida trajo " + plural(added, "fragmento nuevo", "fragmentos nuevos") + ". " + ui.resultSummary.textContent;
+    else if (query.fuentes.length) ui.resultSummary.textContent = "La búsqueda híbrida encontró los mismos fragmentos, quizás en otro orden. " + ui.resultSummary.textContent;
+    if (oldId) api("/colecciones/" + oldId, { method: "DELETE" }).catch(() => {});
+  } catch (error) {
+    setStage("recuperar", "done", plural(session.sources.length, "fragmento encontrado", "fragmentos encontrados") + ", en este servidor");
+    status("No se pudo hacer la búsqueda híbrida: " + error.message, true);
+  } finally { setBusy(false); }
+}
+
+async function cancelHybrid() {
+  if (session.busy || !session.pendingHybrid) return;
+  setBusy(true);
+  await discardPendingHybrid();
+  const previous = session.previousActions;
+  session.previousActions = null;
+  ui.hybridPanel.hidden = true;
+  ui.hybridButton.hidden = false;
+  if (previous) {
+    ui.sendPanel.hidden = !previous.send;
+    ui.noModelPanel.hidden = !previous.noModel;
+    ui.translatePanel.hidden = !previous.translate;
+    ui.resultSummary.textContent = previous.summary;
+  }
+  setBusy(false);
+  ui.hybridButton.focus();
+  announce("Búsqueda híbrida cancelada. No se envió nada a OpenAI.");
+}
+
+function runSuggestion(item) {
+  if (session.busy) return;
+  ui.question.value = item.pregunta;
+  updateCounter();
+  search();
+}
+
+/* ---------- origen: ejemplo o archivos propios ---------- */
 
 function chooseOrigin(origin) {
   if (session.busy) return;
   discardPendingHybrid();
   session.selectedOrigin = origin;
   ui.uploadPanel.hidden = origin !== "carga";
-  ui.suggestions.hidden = origin !== "ejemplo";
+  ui.suggestionsWrap.hidden = origin !== "ejemplo";
+  ui.questionLabel.textContent = origin === "carga" ? "Tu pregunta sobre tus archivos" : "Tu pregunta sobre el proyecto de ejemplo";
   ui.collectionHint.textContent = origin === "carga" ?
-    "La pregunta queda en este servidor hasta que autorices un envío a OpenAI." :
-    "El ejemplo es ficticio y no contiene datos personales.";
-  ui.useExample.classList.toggle("active", origin === "ejemplo");
-  ui.useUpload.classList.toggle("active", origin === "carga");
+    "La búsqueda se hace en este servidor. Nada se envía a OpenAI sin que lo autorices." :
+    "Un gestor de tareas ficticio, con código Python y documentos de texto.";
+  ui.searchButton.textContent = "Buscar en el proyecto";
   ui.useExample.setAttribute("aria-pressed", String(origin === "ejemplo"));
   ui.useUpload.setAttribute("aria-pressed", String(origin === "carga"));
   ui.question.value = "";
-  ui.counter.textContent = "0 / 500";
+  updateCounter();
   clearResults();
-  ui.emptyState.hidden = false;
 }
 
 ui.useExample.addEventListener("click", () => chooseOrigin("ejemplo"));
@@ -251,7 +769,6 @@ ui.uploadFiles.addEventListener("change", () => {
   if (session.origin === "carga") session.mode = null;
   discardPendingHybrid();
   clearResults();
-  ui.emptyState.hidden = false;
 });
 ui.deleteUpload.addEventListener("click", async () => {
   if (!session.id || session.origin !== "carga") return;
@@ -265,381 +782,139 @@ ui.deleteUpload.addEventListener("click", async () => {
     ui.uploadFiles.value = "";
     ui.uploadSummary.textContent = filesSummary();
     clearResults();
-    ui.emptyState.hidden = false;
-    status("Colección y archivos eliminados.", false);
+    status("Tus archivos se borraron del servidor.", false);
   } catch (error) { status(error.message, true); }
 });
 
-async function openSource(number) {
-  if (!session.id || !session.queryId) return;
-  try {
-    const data = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/fuentes/" + number);
-    const source = data.fuente;
-    ui.sourceKind.textContent = source.tipo_fuente === "documento" ? "Documento" : "Código";
-    ui.sourceTitle.textContent = source.titulo || source.simbolo;
-    ui.sourceLocation.textContent = locationOf(source);
-    ui.sourceCode.textContent = source.codigo;
-    showOverlay(ui.sourceDialog);
-  } catch (error) {
-    status(error.message, true);
-  }
-}
-ui.closeSource.addEventListener("click", () => hideOverlay(ui.sourceDialog));
-ui.closeSourceTop.addEventListener("click", () => hideOverlay(ui.sourceDialog));
-ui.sourceDialog.addEventListener("click", event => {
-  if (event.target === ui.sourceDialog) hideOverlay(ui.sourceDialog);
-});
+/* ---------- formulario y navegación ---------- */
 
-function renderSources(sources, seconds) {
-  session.sources = sources;
-  ui.results.hidden = false;
-  ui.resultCount.textContent = "(" + sources.length + ")";
-  ui.sources.replaceChildren();
-  if (!sources.length) {
-    const message = document.createElement("p");
-    message.className = "status-message";
-    message.textContent = "No encontré fragmentos relacionados. Podés reformular la pregunta.";
-    ui.sources.append(message);
-  }
-  sources.forEach((source, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "source-card";
-    const top = document.createElement("span");
-    top.className = "source-top";
-    const kind = document.createElement("span");
-    kind.className = "source-kind";
-    kind.textContent = source.tipo_fuente === "documento" ? "Documento" : "Código";
-    const number = document.createElement("span");
-    number.className = "source-number";
-    number.textContent = String(index + 1).padStart(2, "0") + " ↗";
-    top.append(kind, number);
-    const title = document.createElement("strong");
-    title.textContent = source.titulo || source.simbolo;
-    const place = document.createElement("small");
-    place.textContent = locationOf(source);
-    const excerpt = document.createElement("p");
-    excerpt.textContent = source.texto || source.codigo;
-    button.append(top, title, place, excerpt);
-    button.addEventListener("click", () => openSource(index + 1));
-    ui.sources.append(button);
-  });
-  ui.resultFoot.textContent = "Recuperación: " + Number(seconds || 0).toFixed(3) + " s · Revisá cada cita antes de usar la respuesta.";
+function updateCounter() {
+  const length = ui.question.value.length;
+  ui.counter.hidden = length < 400;
+  ui.counter.textContent = length + " de 500 caracteres";
 }
 
-function renderAnswer(data) {
-  ui.answer.replaceChildren();
-  ui.answer.classList.toggle("abstain", Boolean(data.abstencion));
-  const heading = document.createElement("h4");
-  heading.textContent = data.abstencion ? "Sin evidencia suficiente" : "Respuesta";
-  const paragraph = document.createElement("p");
-  paragraph.textContent = data.abstencion ?
-    "Las fuentes recuperadas no alcanzan para responder con seguridad." :
-    data.respuesta;
-  ui.answer.append(heading, paragraph);
-  if (!data.abstencion) {
-    (data.citas || []).forEach(number => {
-      const citation = document.createElement("button");
-      citation.type = "button";
-      citation.className = "citation";
-      citation.textContent = "[" + number + "]";
-      citation.setAttribute("aria-label", "Abrir fuente " + number);
-      citation.addEventListener("click", () => openSource(number));
-      paragraph.append(citation);
-    });
-  }
-  ui.answer.hidden = false;
-  ui.resultSummary.textContent = data.abstencion ? "El asistente se abstuvo de responder." : "Respuesta generada a partir de " + session.sources.length + " fuentes.";
-  ui.sendPanel.hidden = true;
-  ui.translatePanel.hidden = true;
-  ui.answerStage.focus({ preventScroll: true });
-  ui.answerStage.scrollIntoView({ behavior: "smooth", block: "start" });
-  if (Number(data.tiempos.modelo || 0) > 0)
-    ui.resultFoot.textContent += " · Modelo: " + Number(data.tiempos.modelo).toFixed(3) + " s";
-}
-
-function showSendPreview() {
-  ui.sendPreview.replaceChildren();
-  const questionTitle = document.createElement("strong");
-  questionTitle.textContent = "Pregunta";
-  const questionText = document.createElement("pre");
-  questionText.textContent = session.question;
-  ui.sendPreview.append(questionTitle, questionText);
-  session.sources.forEach((source, index) => {
-    const title = document.createElement("strong");
-    title.textContent = "Fuente " + (index + 1) + " · " + (source.titulo || source.simbolo) + " · " + locationOf(source);
-    const code = document.createElement("pre");
-    code.textContent = source.codigo;
-    ui.sendPreview.append(title, code);
-  });
-}
-
-function showNextSteps() {
-  const count = session.sources.length;
-  session.previousActions = null;
-  ui.results.hidden = false;
-  ui.answer.hidden = true;
-  ui.sendPanel.hidden = true;
-  ui.translatePanel.hidden = true;
-  ui.hybridArea.hidden = !session.modelAvailable || session.mode === "completo";
-  ui.hybridButton.hidden = session.mode === "completo";
-  if (count) {
-    ui.resultSummary.textContent = "Encontré " + count + " fuente" + (count === 1 ? "" : "s") + ". Podés generar una respuesta o revisar los fragmentos debajo.";
-    ui.sourcesSection.open = false;
-    if (session.modelAvailable) {
-      ui.sendSummary.textContent = "Para responder, se enviarán tu pregunta y estos " + count + " fragmentos a OpenAI. Podés ver el texto exacto antes de enviarlo.";
-      showSendPreview();
-      ui.sendPanel.hidden = false;
-    } else {
-      ui.resultSummary.textContent += " La generación no está disponible ahora.";
-    }
-  } else {
-    ui.resultSummary.textContent = "No encontré fuentes suficientes para responder. Podés reformular la pregunta.";
-    ui.sourcesSection.open = false;
-    if (session.mode === "acotado" && session.modelAvailable && session.question.includes("¿")) {
-      ui.translatePreview.textContent = session.question;
-      ui.translatePanel.hidden = false;
-    }
-  }
-  ui.answerStage.focus({ preventScroll: true });
-  ui.answerStage.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-async function search() {
-  if (session.busy) return;
-  const question = ui.question.value.trim();
-  if (!question) { status("Escribí una pregunta para buscar fuentes.", true); ui.question.focus(); return; }
-  clearResults();
-  setBusy(true);
-  try {
-    await ensureCollection("acotado");
-    status("Buscando fuentes en este servidor…", false);
-    const query = await api("/colecciones/" + session.id + "/consultas", {
-      method: "POST", body: JSON.stringify({ pregunta: question })
-    });
-    session.question = question;
-    session.queryId = query.consulta_id;
-    renderSources(query.fuentes, query.tiempos.recuperacion);
-    showNextSteps();
-    status("Búsqueda local lista. No se llamó a OpenAI.", false);
-  } catch (error) { status(error.message, true); }
-  finally { setBusy(false); }
-}
-
-async function generateAnswer() {
-  if (session.busy || !session.queryId || !session.sources.length) return;
-  setBusy(true);
-  try {
-    status("Generando y verificando la respuesta…", false);
-    const answer = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/respuesta", {
-      method: "POST", body: JSON.stringify({ autorizacion: session.mode === "completo" ? "INDEXAR" : "ENVIAR" })
-    });
-    renderAnswer(answer);
-    status(answer.abstencion ? "El modelo se abstuvo por falta de evidencia." : "Respuesta lista. Abrí las citas para revisar las fuentes.", false);
-  } catch (error) { status(error.message, true); }
-  finally { setBusy(false); }
-}
-
-async function translateQuestion() {
-  if (session.busy || !session.queryId || session.sources.length) return;
-  setBusy(true);
-  try {
-    status("Traduciendo la pregunta y buscando fuentes…", false);
-    const translated = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/traduccion", {
-      method: "POST", body: JSON.stringify({ autorizacion: "ENVIAR" })
-    });
-    renderSources(translated.fuentes, translated.tiempos.recuperacion);
-    showNextSteps();
-    if (!translated.fuentes.length) ui.translatePanel.hidden = true;
-    status(translated.fuentes.length ? "Búsqueda ampliada lista." : "La traducción tampoco encontró fuentes; probá otra pregunta.", false);
-  } catch (error) { status(error.message, true); }
-  finally { setBusy(false); }
-}
-
-async function prepareHybrid() {
-  if (session.busy || !session.queryId || !session.modelAvailable) return;
-  setBusy(true);
-  try {
-    const created = await createCollection("completo");
-    session.pendingHybrid = created;
-    showScope(created.alcance);
-    const prepared = session.selectedOrigin === "ejemplo" && session.indexAvailable;
-    ui.hybridTitle.textContent = prepared ? "Usar el índice del ejemplo" : "Preparar la búsqueda híbrida";
-    ui.hybridDetailsLabel.textContent = prepared ? "Ver la pregunta y el índice usado" : "Ver la pregunta y los archivos que se indexarán";
-    ui.hybridQuestion.textContent = "Pregunta que se enviará: “" + session.question + "”";
-    ui.indexButton.firstChild.textContent = prepared ? "Enviar pregunta y buscar con IA " : "Enviar texto y buscar con IA ";
-    ui.hybridSummary.textContent = prepared ?
-      "El índice del ejemplo ya está preparado. Al autorizar, solo se enviará tu pregunta a OpenAI para calcular su vector; los archivos no se reenviarán." :
-      "Al autorizar, se enviarán a OpenAI el texto permitido de estos archivos para calcular embeddings y tu pregunta para buscar. Revisá el alcance debajo.";
-    session.previousActions = {
-      send: !ui.sendPanel.hidden,
-      translate: !ui.translatePanel.hidden,
-      summary: ui.resultSummary.textContent
-    };
-    ui.sendPanel.hidden = true;
-    ui.translatePanel.hidden = true;
-    ui.resultSummary.textContent = "Revisá qué se enviará para mejorar la búsqueda. Después podrás generar una respuesta con las nuevas fuentes.";
-    ui.hybridPanel.hidden = false;
-    ui.hybridButton.hidden = true;
-    status("Revisá el alcance y decidí si querés enviar el contenido.", false);
-  } catch (error) { status(error.message, true); }
-  finally {
-    setBusy(false);
-    if (!ui.hybridPanel.hidden) ui.indexButton.focus();
-  }
-}
-
-async function runHybrid() {
-  if (session.busy || !session.pendingHybrid) return;
-  setBusy(true);
-  const next = session.pendingHybrid;
-  try {
-    status("Buscando con el índice…", false);
-    const query = await api("/colecciones/" + next.coleccion_id + "/consultas", {
-      method: "POST", body: JSON.stringify({ pregunta: session.question, autorizacion: "INDEXAR" })
-    });
-    const oldId = session.id;
-    session.id = next.coleccion_id;
-    session.mode = "completo";
-    session.queryId = query.consulta_id;
-    session.pendingHybrid = null;
-    ui.hybridPanel.hidden = true;
-    renderSources(query.fuentes, query.tiempos.recuperacion);
-    showNextSteps();
-    status("Búsqueda híbrida lista. Para generar respuesta, revisá el contenido y autorizá el siguiente envío.", false);
-    if (oldId) api("/colecciones/" + oldId, { method: "DELETE" }).catch(() => {});
-  } catch (error) { status(error.message, true); }
-  finally { setBusy(false); }
-}
-
-async function cancelHybrid() {
-  if (session.busy || !session.pendingHybrid) return;
-  setBusy(true);
-  await discardPendingHybrid();
-  const previous = session.previousActions;
-  session.previousActions = null;
-  ui.hybridPanel.hidden = true;
-  ui.hybridButton.hidden = false;
-  if (previous) {
-    ui.sendPanel.hidden = !previous.send;
-    ui.translatePanel.hidden = !previous.translate;
-    ui.resultSummary.textContent = previous.summary;
-  }
-  setBusy(false);
-  ui.hybridButton.focus();
-  status("Búsqueda híbrida cancelada. No se envió contenido a OpenAI.", false);
-}
-
-ui.searchButton.addEventListener("click", search);
+ui.queryForm.addEventListener("submit", event => { event.preventDefault(); search(); });
 ui.answerButton.addEventListener("click", generateAnswer);
 ui.translateButton.addEventListener("click", translateQuestion);
 ui.hybridButton.addEventListener("click", prepareHybrid);
 ui.indexButton.addEventListener("click", runHybrid);
 ui.cancelIndex.addEventListener("click", cancelHybrid);
 ui.question.addEventListener("input", () => {
-  ui.counter.textContent = ui.question.value.length + " / 500";
+  updateCounter();
   if (session.question && ui.question.value.trim() !== session.question) {
     discardPendingHybrid();
     clearResults();
-    ui.emptyState.hidden = false;
   }
 });
-ui.question.addEventListener("keydown", event => {
-  if (event.key === "Enter" && event.ctrlKey) { event.preventDefault(); search(); }
+
+ui.menuButton.addEventListener("click", () => {
+  const open = ui.menuButton.getAttribute("aria-expanded") !== "true";
+  ui.menuButton.setAttribute("aria-expanded", String(open));
+  ui.mainNav.classList.toggle("abierta", open);
+});
+ui.mainNav.addEventListener("click", event => {
+  if (event.target.closest("a")) {
+    ui.menuButton.setAttribute("aria-expanded", "false");
+    ui.mainNav.classList.remove("abierta");
+  }
+});
+document.querySelector(".skip-link").addEventListener("click", event => {
+  event.preventDefault();
+  ui.question.focus();
+  ui.question.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
 });
 
+/* ---------- inicio ---------- */
+
+const SUGERENCIAS_VISIBLES = ["codigo", "cruce", "politica", "abstencion"];
+
 async function initialize() {
+  if (!reduceMotion.matches) {
+    ui.stages.classList.add("intro");
+    window.setTimeout(stopIntro, 2600);
+  }
   try {
-    const [state, questions] = await Promise.all([
-      api("/estado"),
-      api("/preguntas-ejemplo")
-    ]);
+    const [state, questions] = await Promise.all([api("/estado"), api("/preguntas-ejemplo")]);
     session.modelAvailable = state.modelo_disponible;
     session.indexAvailable = state.indice_ejemplo_preparado;
-    ui.apiState.textContent = state.modelo_disponible ? "Modelo disponible" : "Solo búsqueda";
-    if (!state.modelo_disponible) ui.apiState.classList.add("offline");
-    questions.forEach(item => {
-      const button = document.createElement("button");
+    session.suggestions = questions;
+    ui.apiState.dataset.model = state.modelo_disponible ? "si" : "no";
+    ui.apiState.textContent = state.modelo_disponible ? "Esta demo responde con OpenAI" : "Esta demo está en modo solo búsqueda";
+    const visible = questions.filter(item => SUGERENCIAS_VISIBLES.includes(item.id));
+    (visible.length ? visible : questions).forEach(item => {
+      const button = el("button", "sugerencia" + (item.id === "abstencion" ? " sugerencia-sin" : ""), item.pregunta);
       button.type = "button";
-      button.className = "suggestion";
-      button.textContent = item.categoria + " · " + item.pregunta;
       button.title = item.descripcion;
-      button.addEventListener("click", () => {
-        ui.question.value = item.pregunta;
-        ui.counter.textContent = ui.question.value.length + " / 500";
-        discardPendingHybrid();
-        clearResults();
-        ui.emptyState.hidden = false;
-        ui.question.focus();
-      });
+      if (item.id === "abstencion") button.append(" ", el("span", "", "(no está en el proyecto)"));
+      button.addEventListener("click", () => runSuggestion(item));
       ui.suggestions.append(button);
     });
   } catch (error) {
-    ui.apiState.textContent = "Sin conexión";
-    ui.apiState.classList.add("offline");
-    status("No se pudo conectar con la API: " + error.message, true);
+    ui.apiState.dataset.model = "no";
+    ui.apiState.textContent = "Sin conexión con el servidor";
+    status("No se pudo conectar con el servidor: " + error.message + ". Recargá la página en un momento.", true);
   }
 }
 initialize();
 
+/* ---------- comparativa de búsquedas ---------- */
 
 const benchmarkData = [
-  { name: "Búsqueda local", detail: "Coincidencia léxica", first: 6, coverage: 5, negative: 2 },
-  { name: "Embeddings OpenAI", detail: "Búsqueda semántica", first: 6, coverage: 7, negative: 0 },
-  { name: "Búsqueda híbrida", detail: "Léxica + semántica", first: 6, coverage: 7, negative: 0 }
+  { mode: "acotado", name: "Por palabras", first: 6, coverage: 5, negative: 2 },
+  { mode: "semantica", name: "Por significado", first: 6, coverage: 7, negative: 0 },
+  { mode: "completo", name: "Híbrida", first: 6, coverage: 7, negative: 0 }
 ];
 const benchmarkMetrics = {
-  first: { title: "La fuente esperada aparece primera", count: 7, denominator: "7 preguntas respondibles", note: "Los tres modos aciertan 6 de 7 y fallan en la misma pregunta. Este empate no significa que recuperen las mismas fuentes después del primer puesto." },
-  coverage: { title: "Todas las fuentes esperadas entre cinco", count: 7, denominator: "7 preguntas respondibles", note: "En cada pregunta, cuenta solo si todas las fuentes esperadas aparecen entre los cinco primeros resultados. Aquí se ve la diferencia: 5/7 en léxico y 7/7 en semántico e híbrido." },
-  negative: { title: "Ninguna fuente cuando no había respuesta", count: 2, denominator: "2 preguntas sin respuesta", note: "Mide solo la recuperación: la búsqueda léxica no devolvió fuentes en las 2 preguntas; semántica e híbrida sí devolvieron candidatos en ambas y por eso marcan 0/2. El modelo puede abstenerse después, aunque el buscador haya devuelto fuentes." }
+  coverage: { title: "¿Trajo todos los fragmentos necesarios entre los cinco primeros?", count: 7, note: "En 7 preguntas con respuesta. Acá está la diferencia: la búsqueda por palabras dejó afuera algún fragmento necesario en 2 preguntas; las otras dos los trajeron siempre." },
+  first: { title: "¿Puso el fragmento correcto en primer lugar?", count: 7, note: "En 7 preguntas con respuesta. Las tres aciertan 6 y fallan en la misma. El empate no quiere decir que traigan los mismos fragmentos después del primero." },
+  negative: { title: "Cuando la pregunta no tenía respuesta, ¿no trajo nada?", count: 2, note: "En 2 preguntas sin respuesta. La búsqueda por palabras no devolvió nada; las otras dos siempre devuelven candidatos parecidos. Igual el modelo puede no responder después, como debe." }
 };
+let benchmarkSeen = false;
+
 function renderBenchmark(metricKey) {
   const metric = benchmarkMetrics[metricKey];
-  const chart = document.getElementById("benchmarkChart");
+  const chart = $("benchmarkChart");
   if (!metric || !chart) return;
-  document.getElementById("benchmarkTitle").textContent = metric.title;
-  document.getElementById("benchmarkDenominator").textContent = metric.denominator;
-  document.getElementById("benchmarkNote").textContent = metric.note;
-  chart.replaceChildren();
-  benchmarkData.forEach((mode) => {
-    const row = document.createElement("div");
-    row.className = "benchmark-row";
-    const label = document.createElement("div");
-    label.className = "benchmark-label";
-    label.textContent = mode.name;
-    const small = document.createElement("small");
-    small.textContent = mode.detail;
-    label.append(small);
-    const track = document.createElement("div");
-    track.className = "benchmark-track";
-    const bar = document.createElement("div");
-    bar.className = "benchmark-bar";
-    bar.style.width = `${(mode[metricKey] / metric.count) * 100}%`;
-    track.append(bar);
-    const value = document.createElement("span");
-    value.className = "benchmark-value";
-    value.textContent = `${mode[metricKey]}/${metric.count}`;
-    row.append(label, track, value);
-    chart.append(row);
+  $("benchmarkTitle").textContent = metric.title;
+  $("benchmarkNote").textContent = metric.note;
+  if (!chart.children.length) {
+    benchmarkData.forEach(item => {
+      const row = el("div", "barra-fila");
+      row.dataset.mode = item.mode;
+      const track = el("div", "barra-pista");
+      track.append(el("div", "barra"));
+      row.append(el("span", "barra-nombre", item.name), track, el("span", "barra-valor"));
+      chart.append(row);
+    });
+  }
+  benchmarkData.forEach((item, index) => {
+    const row = chart.children[index];
+    const value = item[metricKey];
+    row.querySelector(".barra-valor").textContent = value + " de " + metric.count;
+    row.setAttribute("aria-label", item.name + ": " + value + " de " + metric.count);
+    row.querySelector(".barra").style.width = benchmarkSeen ? (value / metric.count) * 100 + "%" : "0%";
+    row.querySelector(".barra").dataset.width = (value / metric.count) * 100 + "%";
   });
-  const axis = document.createElement("div");
-  axis.className = "benchmark-axis";
-  const axisInner = document.createElement("div");
-  axisInner.className = "benchmark-axis-inner";
-  ["0%", "25%", "50%", "75%", "100%"].forEach((tick) => {
-    const span = document.createElement("span");
-    span.textContent = tick;
-    axisInner.append(span);
-  });
-  axis.append(axisInner);
-  chart.append(axis);
-  document.querySelectorAll(".metric-choice").forEach((button) => {
-    const active = button.dataset.metric === metricKey;
-    button.classList.toggle("is-active", active);
-    button.setAttribute("aria-pressed", String(active));
+  document.querySelectorAll(".metrica").forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.metric === metricKey));
   });
 }
-document.querySelectorAll(".metric-choice").forEach((button) => {
+
+function revealBenchmark() {
+  benchmarkSeen = true;
+  document.querySelectorAll("#benchmarkChart .barra").forEach(bar => { bar.style.width = bar.dataset.width; });
+}
+
+document.querySelectorAll(".metrica").forEach(button => {
   button.addEventListener("click", () => renderBenchmark(button.dataset.metric));
 });
 renderBenchmark("coverage");
+if ("IntersectionObserver" in window && !reduceMotion.matches) {
+  const observer = new IntersectionObserver(entries => {
+    if (entries.some(entry => entry.isIntersecting)) { revealBenchmark(); observer.disconnect(); }
+  }, { threshold: 0.4 });
+  observer.observe($("benchmarkChart"));
+} else {
+  revealBenchmark();
+}
