@@ -30,7 +30,15 @@ const ui = {
   sendPanel: $("sendPanel"),
   contextTitle: $("contextTitle"),
   contextNote: $("contextNote"),
-  contextList: $("contextList"),
+  contextQuestion: $("contextQuestion"),
+  contextCount: $("contextCount"),
+  contextChips: $("contextChips"),
+  contextSize: $("contextSize"),
+  comparison: $("comparison"),
+  comparisonTitle: $("comparisonTitle"),
+  comparisonSummary: $("comparisonSummary"),
+  comparisonRows: $("comparisonRows"),
+  backToLexical: $("backToLexical"),
   sendDetails: $("sendDetails"),
   sendPreview: $("sendPreview"),
   answerButton: $("answerButton"),
@@ -293,7 +301,9 @@ function renderSources(sources, seconds) {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     ui.sources.querySelectorAll(".relevancia-barra").forEach(bar => { bar.style.width = bar.dataset.width; });
   }));
-  ui.resultFoot.textContent = "La búsqueda tardó " + formatSeconds(seconds) + " en este servidor.";
+  ui.resultFoot.textContent = session.mode === "completo" ?
+    "La búsqueda híbrida tardó " + formatSeconds(seconds) + ", incluido el cálculo del vector de tu pregunta en OpenAI." :
+    "La búsqueda tardó " + formatSeconds(seconds) + " en este servidor.";
 }
 
 function formatSeconds(seconds) {
@@ -409,23 +419,79 @@ function renderAnswer(data) {
 
 /* ---------- contexto para el modelo ---------- */
 
+function sourceChip(source, number) {
+  const chip = el("button", "ficha");
+  chip.type = "button";
+  chip.append(el("b", "", "[" + number + "]"), source.ruta.split("/").pop() + " " + shortPlace(source));
+  chip.setAttribute("aria-label", "Fragmento " + number + ": " + source.ruta + ", " + placeOf(source) + ". Mostrarlo");
+  chip.addEventListener("click", () => focusSource(number));
+  return chip;
+}
+
 function showContext() {
-  ui.contextList.replaceChildren();
-  const addRow = (label, value, isPath) => {
-    const item = el("li");
-    item.append(el("span", "rotulo", label), el("span", isPath ? "ruta" : "", value));
-    ui.contextList.append(item);
-  };
-  addRow("Pregunta", session.question);
-  session.sources.forEach((source, index) => addRow("Fragmento " + (index + 1), source.ruta + ", " + placeOf(source), true));
+  const total = session.sources.length;
+  ui.contextQuestion.textContent = session.question;
+  ui.contextCount.textContent = plural(total, "fragmento");
+  ui.contextChips.replaceChildren(...session.sources.map((source, index) => sourceChip(source, index + 1)));
 
   /* Mismo formato que preparar_consulta y las instrucciones de validar_evidencia.py. */
   const blocks = session.sources.map((source, index) => {
     const name = [source.contenedor, source.simbolo].filter(Boolean).join(".");
     return "[" + (index + 1) + "] " + serverPlace(source) + " (" + name + ")\n" + (source.codigo || "");
   });
-  ui.sendPreview.textContent = "Pregunta: " + session.question + "\n\nFuentes:\n" + blocks.join("\n\n");
+  const text = "Pregunta: " + session.question + "\n\nFuentes:\n" + blocks.join("\n\n");
+  ui.sendPreview.textContent = text;
   $("instructionsPreview").textContent = MODEL_INSTRUCTIONS;
+  ui.contextSize.textContent = "En total, " + text.length.toLocaleString("es-AR") + " caracteres: la pregunta y estos fragmentos completos, con su archivo y sus líneas. Nada más del proyecto.";
+}
+
+/* ---------- comparación entre la búsqueda por palabras y la híbrida ---------- */
+
+function renderComparison(before, after) {
+  const beforeRank = new Map(before.map((source, index) => [sourceKey(source), index + 1]));
+  const afterKeys = new Set(after.map(sourceKey));
+  const added = after.filter(source => !beforeRank.has(sourceKey(source))).length;
+  const dropped = before.filter(source => !afterKeys.has(sourceKey(source)));
+  const kept = after.length - added;
+  const moved = after.some((source, index) => beforeRank.has(sourceKey(source)) && beforeRank.get(sourceKey(source)) !== index + 1);
+
+  let summary;
+  if (!before.length) summary = "La búsqueda por palabras no había encontrado nada; la híbrida trajo " + plural(after.length, "fragmento") + ".";
+  else if (!added && !dropped.length) summary = "Las dos búsquedas trajeron los mismos " + plural(after.length, "fragmento") + (moved ? ", pero en otro orden." : " y en el mismo orden.");
+  else {
+    const parts = [];
+    if (added) parts.push("trajo " + plural(added, "fragmento nuevo", "fragmentos nuevos"));
+    if (kept) parts.push("mantuvo " + kept);
+    if (dropped.length) parts.push("dejó afuera " + dropped.length);
+    summary = "Frente a la búsqueda por palabras, la híbrida " + parts.join(", ").replace(/, ([^,]*)$/, " y $1") + ".";
+  }
+  ui.comparisonSummary.textContent = summary;
+
+  const rows = [];
+  after.forEach((source, index) => {
+    const position = index + 1;
+    const previous = beforeRank.get(sourceKey(source));
+    let note = null;
+    if (!previous) note = ["cambio cambio-nuevo", "nuevo"];
+    else if (previous > position) note = ["cambio cambio-sube", "sube " + (previous - position)];
+    else if (previous < position) note = ["cambio cambio-baja", "baja " + (position - previous)];
+    rows.push({ source, previous, position, note, cls: previous ? "" : "fila-nueva" });
+  });
+  dropped.forEach(source => rows.push({ source, previous: beforeRank.get(sourceKey(source)), position: null, note: ["cambio cambio-afuera", "quedó afuera"], cls: "fila-afuera" }));
+
+  ui.comparisonRows.replaceChildren(...rows.map((row, i) => {
+    const tr = el("tr", row.cls);
+    tr.style.setProperty("--i", i);
+    const name = el("td", "", row.source.ruta + " " + shortPlace(row.source));
+    const lexical = el("td");
+    lexical.append(row.previous ? el("span", "posicion", String(row.previous)) : el("span", "cambio-afuera", "no estaba"));
+    const hybrid = el("td");
+    if (row.position) hybrid.append(el("span", "posicion", String(row.position)));
+    if (row.note) hybrid.append(el("span", row.note[0], row.note[1]));
+    tr.append(name, lexical, hybrid);
+    return tr;
+  }));
+  ui.comparison.hidden = false;
 }
 
 const MODEL_INSTRUCTIONS =
@@ -473,6 +539,7 @@ function clearResults() {
   ui.hybridPanel.hidden = true;
   ui.hybridQuestion.textContent = "";
   ui.sendDetails.open = false;
+  ui.comparison.hidden = true;
   ui.sources.replaceChildren();
   ui.resultFoot.textContent = "";
   ui.resultSummary.hidden = false;
@@ -488,7 +555,8 @@ function clearResults() {
   status("", false);
 }
 
-function showNextSteps() {
+function showNextSteps(options) {
+  const keepPosition = Boolean(options && options.keepPosition);
   const count = session.sources.length;
   const hybrid = session.mode === "completo";
   session.previousActions = null;
@@ -498,7 +566,7 @@ function showNextSteps() {
   ui.noModelPanel.hidden = true;
   ui.translatePanel.hidden = true;
   ui.resultSummary.hidden = false;
-  ui.modeRow.hidden = false;
+  ui.modeRow.hidden = hybrid;
   ui.modeTag.dataset.mode = hybrid ? "completo" : "acotado";
   ui.modeTag.textContent = hybrid ? "Búsqueda híbrida: palabras y significado" : "Búsqueda por palabras";
   ui.hybridButton.hidden = !session.modelAvailable || hybrid;
@@ -511,7 +579,7 @@ function showNextSteps() {
     ui.sendPanel.hidden = false;
     if (session.modelAvailable) {
       setStage("contexto", "waiting", "Revisá lo que recibiría el modelo");
-      ui.resultSummary.textContent = "Antes de responder, mirá qué recibiría el modelo y decidí si lo enviás.";
+      ui.resultSummary.hidden = true;
       ui.contextTitle.textContent = "Esto es lo que recibirá el modelo";
       ui.contextNote.textContent = "Nada sale de este servidor hasta que tocás el botón.";
       ui.answerButton.hidden = false;
@@ -546,15 +614,17 @@ function showNextSteps() {
     }
     announce("No se encontraron fragmentos. El sistema no responde sin evidencia.");
   }
-  revealIfNeeded(ui.stages);
-  ui.answerStage.focus({ preventScroll: true });
+  if (!keepPosition) {
+    revealIfNeeded(ui.stages);
+    ui.answerStage.focus({ preventScroll: true });
+  }
 }
 
 /* ---------- acciones ---------- */
 
 function setBusy(value) {
   session.busy = value;
-  [ui.searchButton, ui.question, ui.uploadFiles, ui.useExample, ui.useUpload, ui.answerButton, ui.translateButton, ui.hybridButton, ui.indexButton, ui.cancelIndex]
+  [ui.searchButton, ui.backToLexical, ui.question, ui.uploadFiles, ui.useExample, ui.useUpload, ui.answerButton, ui.translateButton, ui.hybridButton, ui.indexButton, ui.cancelIndex]
     .forEach(node => { node.disabled = value; });
   ui.suggestions.querySelectorAll("button").forEach(node => { node.disabled = value; });
   ui.searchButton.textContent = value ? "Buscando…" : "Buscar en el proyecto";
@@ -694,10 +764,10 @@ async function prepareHybrid() {
     ui.hybridTitle.textContent = prepared ? "Comparar con la búsqueda híbrida" : "Preparar la búsqueda híbrida";
     ui.hybridDetailsLabel.textContent = prepared ? "Ver la pregunta que se envía" : "Ver la pregunta y los archivos que se envían";
     ui.hybridQuestion.textContent = "Pregunta que se envía: «" + session.question + "»";
-    ui.indexButton.textContent = prepared ? "Enviar la pregunta y buscar" : "Enviar los archivos y buscar";
+    ui.indexButton.textContent = prepared ? "Enviar la pregunta y comparar" : "Enviar los archivos y comparar";
     ui.hybridSummary.textContent = prepared ?
-      "La búsqueda híbrida suma la comparación por significado. El índice del ejemplo ya está preparado: solo se envía tu pregunta a OpenAI para calcular su vector, los archivos no." :
-      "La búsqueda híbrida suma la comparación por significado. Para eso se envía a OpenAI el texto permitido de tus archivos, para calcular sus vectores, y tu pregunta. Revisá el detalle antes de autorizar.";
+      "La búsqueda híbrida busca por palabras y también por significado. Después vas a ver, fragmento por fragmento, qué cambió frente a la búsqueda por palabras. El índice del ejemplo ya está preparado: solo se envía tu pregunta a OpenAI para calcular su vector, los archivos no." :
+      "La búsqueda híbrida busca por palabras y también por significado. Después vas a ver, fragmento por fragmento, qué cambió frente a la búsqueda por palabras. Para eso se envía a OpenAI el texto permitido de tus archivos, para calcular sus vectores, y tu pregunta. Revisá el detalle antes de autorizar.";
     session.previousActions = {
       send: !ui.sendPanel.hidden,
       noModel: !ui.noModelPanel.hidden,
@@ -711,7 +781,10 @@ async function prepareHybrid() {
   } catch (error) { status(error.message, true); }
   finally {
     setBusy(false);
-    if (!ui.hybridPanel.hidden) ui.indexButton.focus();
+    if (!ui.hybridPanel.hidden) {
+      ui.indexButton.focus({ preventScroll: true });
+      ui.hybridPanel.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+    }
   }
 }
 
@@ -731,7 +804,8 @@ async function runHybrid() {
   if (session.busy || !session.pendingHybrid) return;
   setBusy(true);
   const next = session.pendingHybrid;
-  const previousKeys = new Set(session.sources.map(sourceKey));
+  const previousSources = session.sources.slice();
+  const previousKeys = new Set(previousSources.map(sourceKey));
   setStage("recuperar", "active", "Buscando por palabras y por significado…");
   setStage("contexto", "idle");
   setStage("responder", "idle");
@@ -748,13 +822,16 @@ async function runHybrid() {
     session.matchQuestion = null;
     ui.hybridPanel.hidden = true;
     renderSources(query.fuentes, query.tiempos.recuperacion);
-    showNextSteps();
-    const added = query.fuentes.filter(source => !previousKeys.has(sourceKey(source))).length;
-    if (added) ui.resultSummary.textContent = "La búsqueda híbrida trajo " + plural(added, "fragmento nuevo", "fragmentos nuevos") + ". " + ui.resultSummary.textContent;
-    else if (query.fuentes.length) ui.resultSummary.textContent = "La búsqueda híbrida encontró los mismos fragmentos, quizás en otro orden. " + ui.resultSummary.textContent;
+    showNextSteps({ keepPosition: true });
+    renderComparison(previousSources, query.fuentes);
+    ui.comparisonTitle.focus({ preventScroll: true });
+    ui.comparison.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+    announce(ui.comparisonSummary.textContent);
     if (oldId) api("/colecciones/" + oldId, { method: "DELETE" }).catch(() => {});
   } catch (error) {
-    setStage("recuperar", "done", plural(session.sources.length, "fragmento encontrado", "fragmentos encontrados") + ", en este servidor");
+    await discardPendingHybrid();
+    ui.hybridPanel.hidden = true;
+    showNextSteps({ keepPosition: true });
     status("No se pudo hacer la búsqueda híbrida: " + error.message, true);
   } finally { setBusy(false); }
 }
@@ -844,6 +921,11 @@ ui.translateButton.addEventListener("click", translateQuestion);
 ui.hybridButton.addEventListener("click", prepareHybrid);
 ui.indexButton.addEventListener("click", runHybrid);
 ui.cancelIndex.addEventListener("click", cancelHybrid);
+ui.backToLexical.addEventListener("click", () => {
+  if (session.busy) return;
+  ui.question.value = session.question;
+  search();
+});
 ui.question.addEventListener("input", () => {
   updateCounter();
   if (session.question && ui.question.value.trim() !== session.question) {

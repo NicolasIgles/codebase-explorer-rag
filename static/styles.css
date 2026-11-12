@@ -173,10 +173,39 @@ h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.08; font-weight: 800; l
 .contexto { display: grid; gap: 14px; padding-top: 18px; border-top: 1px solid var(--regla); animation: aparecer .35s var(--salida); }
 .contexto h3 { font-size: 19px; font-weight: 700; }
 .contexto > p { max-width: 40em; }
-.contexto-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.contexto-lista li { display: flex; gap: 12px; align-items: baseline; font-size: 16px; }
-.contexto-lista .rotulo { flex: none; width: 92px; color: var(--grafito); }
-.contexto-lista .ruta { font-family: var(--mono); font-size: 15px; overflow-wrap: anywhere; }
+.paquete { display: grid; gap: 14px; padding: 18px 20px; background: var(--papel); border-radius: 12px; }
+.paquete-fila { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 14px; align-items: baseline; }
+.paquete-rotulo { font-size: 15px; color: var(--grafito); }
+.paquete-pregunta { font-size: 17px; font-weight: 700; }
+.paquete-fragmentos { display: flex; flex-wrap: wrap; gap: 8px; }
+.ficha { min-height: 36px; padding: 2px 10px; font-family: var(--mono); font-size: 14px; color: var(--tinta); background: var(--hoja); border: 1px solid var(--regla-fuerte); border-radius: 8px; transition: border-color .15s; }
+.ficha:hover { border-color: var(--tinta); }
+.ficha b { font-weight: 500; color: var(--grafito); margin-right: 6px; }
+.paquete-tamano { font-size: 15px; color: var(--tinta-suave); }
+
+.comparacion { display: grid; gap: 14px; padding: 20px 22px; border: 1.5px solid var(--hibrida); border-radius: 12px; animation: aparecer .35s var(--salida); scroll-margin-top: 16px; }
+.comparacion h3 { font-size: 19px; font-weight: 700; }
+.comparacion h3:focus { outline: none; }
+.comparacion-resumen { font-size: 17px; max-width: 40em; }
+.tabla-envoltura { overflow-x: auto; }
+.comparacion-tabla { width: 100%; border-collapse: collapse; font-size: 15px; }
+.comparacion-tabla th, .comparacion-tabla td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--regla); vertical-align: baseline; }
+.comparacion-tabla thead th { font-size: 14px; font-weight: 700; color: var(--grafito); border-bottom: 2px solid var(--regla-fuerte); }
+.comparacion-tabla .col-modo { width: 26%; white-space: nowrap; }
+.comparacion-tabla .col-modo::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; background: var(--palabras); }
+.comparacion-tabla .col-modo[data-mode="completo"]::before { background: var(--hibrida); }
+.comparacion-tabla td:first-child { font-family: var(--mono); font-size: 14px; overflow-wrap: anywhere; }
+.posicion { font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cambio { margin-left: 8px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+.cambio-nuevo { color: var(--hibrida); }
+.cambio-sube { color: var(--palabras); }
+.cambio-baja, .cambio-afuera { color: var(--grafito); }
+.fila-afuera td { color: var(--grafito); }
+.fila-afuera td:first-child { text-decoration: line-through; text-decoration-color: var(--borde-campo); }
+.fila-nueva td:first-child { box-shadow: inset 3px 0 0 var(--hibrida); padding-left: 12px; }
+.comparacion-tabla tbody tr { animation: entrar .4s var(--salida) both; animation-delay: calc(var(--i, 0) * 60ms); }
+.comparacion-nota { font-size: 15px; color: var(--grafito); max-width: 44em; }
+.comparacion .boton-texto { justify-self: start; }
 .contexto-nota { font-size: 15px; color: var(--grafito); }
 .contexto .boton-principal { justify-self: start; }
 .contexto-texto { margin: 10px 0 0; max-height: 320px; overflow: auto; padding: 14px 16px; font-family: var(--mono); font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--papel); border-radius: var(--radio); }
@@ -368,5 +397,8 @@ h1 { font-size: clamp(32px, 4.6vw, 52px); line-height: 1.08; font-weight: 800; l
   .dialogo { padding: 20px 16px; }
   .codigo-dialogo .linea { min-width: 0; }
   .codigo-dialogo .lc { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .contexto-lista li { flex-direction: column; gap: 0; }
+  .paquete { padding: 14px; }
+  .paquete-fila { grid-template-columns: 1fr; }
+  .comparacion { padding: 16px 14px; }
+  .comparacion-tabla th, .comparacion-tabla td { padding: 8px 6px; }
 }
