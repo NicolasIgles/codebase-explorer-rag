@@ -23,43 +23,10 @@ const ui = {
   status: $("status"),
   announcer: $("announcer"),
   results: $("results"),
-  answerStage: $("answerStage"),
-  answerTitle: $("answerTitle"),
-  resultSummary: $("resultSummary"),
-  answer: $("answer"),
-  sendPanel: $("sendPanel"),
-  contextTitle: $("contextTitle"),
-  contextNote: $("contextNote"),
-  contextQuestion: $("contextQuestion"),
-  contextCount: $("contextCount"),
-  contextChips: $("contextChips"),
-  contextSize: $("contextSize"),
-  comparison: $("comparison"),
-  comparisonTitle: $("comparisonTitle"),
+  resultsTitle: $("resultsTitle"),
+  resultsQuestion: $("resultsQuestion"),
   comparisonSummary: $("comparisonSummary"),
-  comparisonRows: $("comparisonRows"),
-  backToLexical: $("backToLexical"),
-  sendDetails: $("sendDetails"),
-  sendPreview: $("sendPreview"),
-  answerButton: $("answerButton"),
-  noModelPanel: $("noModelPanel"),
-  translatePanel: $("translatePanel"),
-  translatePreview: $("translatePreview"),
-  translateButton: $("translateButton"),
-  modeRow: $("modeRow"),
-  modeTag: $("modeTag"),
-  hybridButton: $("hybridButton"),
-  hybridPanel: $("hybridPanel"),
-  hybridTitle: $("hybridTitle"),
-  hybridSummary: $("hybridSummary"),
-  hybridDetailsLabel: $("hybridDetailsLabel"),
-  hybridQuestion: $("hybridQuestion"),
-  scope: $("scope"),
-  indexButton: $("indexButton"),
-  cancelIndex: $("cancelIndex"),
-  sourcesTitle: $("sourcesTitle"),
-  resultCount: $("resultCount"),
-  sources: $("sources"),
+  laneSwitch: $("laneSwitch"),
   resultFoot: $("resultFoot"),
   sourceDialog: $("sourceDialog"),
   sourceKind: $("sourceKind"),
@@ -70,11 +37,23 @@ const ui = {
   closeSourceTop: $("closeSourceTop")
 };
 
+const MODES = ["acotado", "completo"];
+const LANE_NAME = { acotado: "Por palabras", completo: "Híbrida" };
+const LANE_SHORT = { acotado: "Por palabras", completo: "Híbrida" };
+
+function newLane(mode) {
+  return {
+    mode, status: "empty", collectionId: null, queryId: null, pending: null,
+    sources: [], seconds: 0, matchQuestion: null, translated: null,
+    answer: null, answerStatus: "none", animate: false, animateAnswer: false, error: ""
+  };
+}
+
 const session = {
-  id: null, mode: null, origin: null, selectedOrigin: "ejemplo",
-  queryId: null, sources: [], cited: [], question: "", matchQuestion: null, pendingHybrid: null,
-  previousActions: null, previousKeys: null, modelAvailable: false,
-  indexAvailable: false, busy: false, suggestions: []
+  selectedOrigin: "ejemplo", origin: null, question: "",
+  modelAvailable: false, indexAvailable: false, busy: false, suggestions: [],
+  lanes: { acotado: newLane("acotado"), completo: newLane("completo") },
+  lastLane: "acotado", visibleLane: "acotado"
 };
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const scrollBehavior = () => (reduceMotion.matches ? "auto" : "smooth");
@@ -85,6 +64,13 @@ function el(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function button(className, text, onClick) {
+  const node = el("button", className, text);
+  node.type = "button";
+  if (onClick) node.addEventListener("click", onClick);
   return node;
 }
 
@@ -129,10 +115,10 @@ function revealIfNeeded(node) {
     node.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
 }
 
-function replay(node, className) {
-  node.classList.remove(className);
-  void node.offsetWidth;
-  node.classList.add(className);
+function formatSeconds(seconds) {
+  const value = Number(seconds || 0);
+  if (value < 1) return Math.max(1, Math.round(value * 1000)).toLocaleString("es-AR") + " ms";
+  return value.toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " s";
 }
 
 /* ---------- etapas ---------- */
@@ -148,8 +134,41 @@ function resetStages() {
   ["recuperar", "contexto", "responder"].forEach(name => setStage(name, "idle"));
 }
 
-function stopIntro() {
-  ui.stages.classList.remove("intro");
+function stopIntro() { ui.stages.classList.remove("intro"); }
+
+/* Las etapas de arriba muestran la búsqueda con la que se trabajó por última vez. */
+function renderStages() {
+  const lane = session.lanes[session.lastLane];
+  const prefix = LANE_SHORT[lane.mode] + ": ";
+  const count = lane.sources.length;
+  if (lane.status === "empty" || lane.status === "preparing" || lane.status === "authorizing") return;
+  if (lane.status === "loading") {
+    setStage("recuperar", "active", prefix + (lane.mode === "completo" ? "buscando por palabras y por significado…" : "buscando en el código y los documentos…"));
+    setStage("contexto", "idle");
+    setStage("responder", "idle");
+    return;
+  }
+  if (lane.status === "error") { resetStages(); return; }
+  setStage("recuperar", "done", prefix + (count ? plural(count, "fragmento encontrado", "fragmentos encontrados") : "ningún fragmento coincide"));
+  if (!count) {
+    setStage("contexto", "skipped", "Sin fragmentos, no hay nada que armar");
+    setStage("responder", "abstained", "No respondió, por falta de evidencia");
+    return;
+  }
+  if (!session.modelAvailable) {
+    setStage("contexto", "done", "Tu pregunta y " + plural(count, "fragmento") + ", listos para el modelo");
+    setStage("responder", "skipped", "Necesita una clave de OpenAI en el servidor");
+    return;
+  }
+  if (lane.answerStatus === "none") {
+    setStage("contexto", "waiting", prefix + "revisá lo que recibiría el modelo");
+    setStage("responder", "idle");
+  } else {
+    setStage("contexto", "done", prefix + "enviaste tu pregunta y " + plural(count, "fragmento"));
+    if (lane.answerStatus === "loading") setStage("responder", "active", prefix + "generando la respuesta y comprobando las citas…");
+    else if (lane.answer.abstencion) setStage("responder", "abstained", prefix + "no respondió, por falta de evidencia");
+    else setStage("responder", "done", prefix + "usó " + lane.answer.citas.length + " de los " + plural(count, "fragmento"));
+  }
 }
 
 /* ---------- fragmentos: líneas, coincidencias y relevancia ---------- */
@@ -209,6 +228,12 @@ function shortPlace(source) {
   return source.inicio === source.fin ? String(source.inicio) : source.inicio + "–" + source.fin;
 }
 
+function serverPlace(source) {
+  const place = source.ubicacion || {};
+  const base = place.tipo === "pagina" ? source.ruta + ":página " + place.pagina : source.ruta + ":" + source.inicio + "-" + source.fin;
+  return place.columna_inicio != null ? base + ":columnas " + place.columna_inicio + "-" + place.columna_fin : base;
+}
+
 function kindOf(source) {
   if (source.tipo_fuente === "documento") return "Documento";
   const kinds = { funcion: "Función", metodo: "Método", clase: "Clase", variable: "Variable" };
@@ -240,116 +265,416 @@ function codeBlock(lines, isText, limit) {
   return block;
 }
 
-function renderSources(sources, seconds) {
-  session.sources = sources;
-  session.cited = [];
-  ui.results.hidden = false;
-  ui.sourcesTitle.firstChild.textContent = "Lo que encontró la búsqueda ";
-  ui.resultCount.textContent = sources.length ? "(" + sources.length + ")" : "";
-  ui.sources.replaceChildren();
-  if (!sources.length) {
-    ui.sources.append(el("p", "fragmentos-vacio", "Ningún fragmento del proyecto coincide con tu pregunta."));
+/* Cómo cambió cada fragmento entre la búsqueda por palabras y la híbrida. */
+function comparisonFor(mode) {
+  const lexical = session.lanes.acotado;
+  const hybrid = session.lanes.completo;
+  if (lexical.status !== "ready" || hybrid.status !== "ready") return null;
+  const rank = lane => new Map(lane.sources.map((source, index) => [sourceKey(source), index + 1]));
+  return { own: mode === "completo" ? rank(lexical) : rank(hybrid) };
+}
+
+function diffBadge(mode, source, position, comparison) {
+  if (!comparison) return null;
+  const other = comparison.own.get(sourceKey(source));
+  if (mode === "completo") {
+    if (!other) return el("span", "insignia insignia-nueva", "Nuevo");
+    if (other > position) return el("span", "insignia insignia-sube", "Subió " + (other - position));
+    if (other < position) return el("span", "insignia insignia-baja", "Bajó " + (position - other));
+    return null;
   }
-  const top = Math.max(...sources.map(s => Number(s.puntuacion) || 0), 0);
-  const previous = session.previousKeys;
-  sources.forEach((source, index) => {
-    const card = el("article", "fragmento");
-    card.id = "fragmento-" + (index + 1);
-    card.style.setProperty("--i", index);
-    card.setAttribute("aria-label", "Fragmento " + (index + 1) + ": " + source.ruta + ", " + placeOf(source));
+  return other ? null : el("span", "insignia insignia-afuera", "No está en la híbrida");
+}
 
-    const head = el("div", "fragmento-cabeza");
-    const path = el("span", "fragmento-ruta", source.ruta + " ");
-    path.append(el("span", "", placeOf(source)));
-    const badges = el("span", "insignias");
-    if (previous && !previous.has(sourceKey(source))) badges.append(el("span", "insignia insignia-nueva", "Nueva con la híbrida"));
-    head.append(path, badges);
+function sourceCard(mode, source, index, top, comparison) {
+  const lane = session.lanes[mode];
+  const number = index + 1;
+  const card = el("article", "fragmento");
+  card.id = "frag-" + mode + "-" + number;
+  card.style.setProperty("--i", index);
+  if (!lane.animate) card.style.animation = "none";
+  card.setAttribute("aria-label", "Fragmento " + number + ": " + source.ruta + ", " + placeOf(source));
 
-    const name = el("p", "fragmento-simbolo", "Fragmento " + (index + 1) + ". " + kindOf(source) + " " + (source.titulo || source.simbolo));
-    const isText = source.tipo_fuente === "documento";
-    const allLines = parseLines(source);
-    const previewLines = isText ? allLines.filter(line => line.text.trim()) : allLines;
-    const block = codeBlock(previewLines, isText, isText ? 3 : 6);
-    const reason = el("p", "razon");
-    const terms = matchedTerms(session.matchQuestion || session.question, source);
-    if (terms.length) {
-      reason.append("Por qué apareció: coincide con ");
-      terms.slice(0, 4).forEach((term, i, list) => {
-        if (i > 0) reason.append(i === list.length - 1 ? " y " : ", ");
-        reason.append(el("mark", "termino", term));
-      });
-    } else {
-      reason.append(session.mode === "completo" ? "Por qué apareció: se parece en significado a tu pregunta" : "Por qué apareció: coincide con partes del nombre o la ruta");
-    }
+  const answered = lane.answerStatus === "ready" && !lane.answer.abstencion;
+  const cited = answered && lane.answer.citas.includes(number);
+  if (answered) card.classList.add(cited ? "citado" : "no-citado");
 
-    const ratio = top > 0 ? (Number(source.puntuacion) || 0) / top : 0;
-    const meter = el("div", "relevancia");
-    const track = el("div", "relevancia-pista");
-    const bar = el("div", "relevancia-barra" + (ratio < 0.3 ? " baja" : ""));
+  const head = el("div", "fragmento-cabeza");
+  const path = el("span", "fragmento-ruta", source.ruta + " ");
+  path.append(el("span", "", placeOf(source)));
+  const badges = el("span", "insignias");
+  if (answered) badges.append(cited ? el("span", "insignia insignia-citado", "Citado") : el("span", "insignia", "No citado"));
+  const diff = diffBadge(mode, source, number, comparison);
+  if (diff) badges.append(diff);
+  if (!lane.animate && !lane.animateAnswer) badges.querySelectorAll(".insignia").forEach(node => { node.style.animation = "none"; });
+  head.append(path, badges);
+
+  const name = el("p", "fragmento-simbolo", "[" + number + "] " + kindOf(source) + " " + (source.titulo || source.simbolo));
+  const isText = source.tipo_fuente === "documento";
+  const allLines = parseLines(source);
+  const preview = isText ? allLines.filter(line => line.text.trim()) : allLines;
+  const block = codeBlock(preview, isText, isText ? 3 : 5);
+  if (cited) {
+    const lines = block.querySelectorAll(".linea");
+    if (lane.animateAnswer) requestAnimationFrame(() => requestAnimationFrame(() => lines.forEach(line => line.classList.add("marcada"))));
+    else lines.forEach(line => { line.style.transition = "none"; line.classList.add("marcada"); });
+  }
+
+  const reason = el("p", "razon");
+  const terms = matchedTerms(lane.matchQuestion || session.question, source);
+  if (terms.length) {
+    reason.append("Por qué apareció: coincide con ");
+    terms.slice(0, 4).forEach((term, i, list) => {
+      if (i > 0) reason.append(i === list.length - 1 ? " y " : ", ");
+      reason.append(el("mark", "termino", term));
+    });
+  } else {
+    reason.append(mode === "completo" ? "Por qué apareció: se parece en significado a tu pregunta" : "Por qué apareció: coincide con partes del nombre o la ruta");
+  }
+
+  const ratio = top > 0 ? (Number(source.puntuacion) || 0) / top : 0;
+  const meter = el("div", "relevancia");
+  const track = el("div", "relevancia-pista");
+  const bar = el("div", "relevancia-barra" + (ratio < 0.3 ? " baja" : ""));
+  const width = Math.max(4, Math.round(ratio * 100)) + "%";
+  if (lane.animate) {
     bar.style.setProperty("--i", index);
-    bar.dataset.width = Math.max(4, Math.round(ratio * 100)) + "%";
-    track.append(bar);
-    meter.append(track, el("span", "relevancia-texto", relevanceText(index, ratio)));
+    requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = width; }));
+  } else {
+    bar.style.transition = "none";
+    bar.style.width = width;
+  }
+  track.append(bar);
+  meter.append(track, el("span", "relevancia-texto", relevanceText(index, ratio)));
 
-    const more = el("button", "boton-texto ver-completo", "Ver el fragmento completo");
-    more.type = "button";
-    more.addEventListener("click", () => openSource(index + 1));
+  const more = button("boton-texto ver-completo", "Ver el fragmento completo", () => openSource(mode, number));
+  card.append(head, name, block, reason, meter, more);
+  return card;
+}
 
-    card.append(head, name, block, reason, meter, more);
-    ui.sources.append(card);
+/* ---------- el contexto que recibe el modelo ---------- */
+
+const MODEL_INSTRUCTIONS =
+  "Decidí si alguno de los fragmentos realmente contiene evidencia para responder. " +
+  "Un nombre parecido no alcanza. Si hay evidencia, respondé en español de forma breve " +
+  "y poné en fuentes solo los números que respaldan la respuesta; no agregues citas al texto. " +
+  "Si no hay evidencia suficiente, usá hay_evidencia=false, respuesta vacía y fuentes vacías. " +
+  "No inventes comportamiento que no figure en los fragmentos.";
+
+/* Mismo formato que preparar_consulta (validar_evidencia.py). */
+function contextText(lane) {
+  const blocks = lane.sources.map((source, index) => {
+    const name = [source.contenedor, source.simbolo].filter(Boolean).join(".");
+    return "[" + (index + 1) + "] " + serverPlace(source) + " (" + name + ")\n" + (source.codigo || "");
   });
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    ui.sources.querySelectorAll(".relevancia-barra").forEach(bar => { bar.style.width = bar.dataset.width; });
-  }));
-  ui.resultFoot.textContent = session.mode === "completo" ?
-    "La búsqueda híbrida tardó " + formatSeconds(seconds) + ", incluido el cálculo del vector de tu pregunta en OpenAI." :
-    "La búsqueda tardó " + formatSeconds(seconds) + " en este servidor.";
+  return "Pregunta: " + session.question + "\n\nFuentes:\n" + blocks.join("\n\n");
 }
 
-function formatSeconds(seconds) {
-  const value = Number(seconds || 0);
-  if (value < 1) return Math.max(1, Math.round(value * 1000)).toLocaleString("es-AR") + " ms";
-  return value.toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " s";
+function disclosure(summary, text, label) {
+  const details = el("details", "desplegable");
+  details.append(el("summary", "", summary));
+  const body = el("div", "contexto-texto", text);
+  body.tabIndex = 0;
+  body.setAttribute("aria-label", label);
+  details.append(body);
+  return details;
 }
 
-function markCited(numbers) {
-  session.cited = numbers;
-  const cited = new Set(numbers);
-  ui.sources.querySelectorAll(".fragmento").forEach((card, index) => {
-    const isCited = cited.has(index + 1);
-    card.classList.toggle("citado", isCited);
-    card.classList.toggle("no-citado", !isCited);
-    const badges = card.querySelector(".insignias");
-    badges.querySelectorAll(".insignia-citado, .insignia-sin").forEach(node => node.remove());
-    badges.prepend(isCited ? el("span", "insignia insignia-citado", "Citado") : el("span", "insignia insignia-sin", "No citado"));
-    if (isCited) card.querySelectorAll(".linea").forEach(line => line.classList.add("marcada"));
+function chip(mode, source, number) {
+  const node = button("ficha", "", () => focusSource(mode, number));
+  node.append(el("b", "", "[" + number + "]"), source.ruta.split("/").pop() + " " + shortPlace(source));
+  node.setAttribute("aria-label", "Fragmento " + number + ": " + source.ruta + ", " + placeOf(source) + ". Mostrarlo");
+  return node;
+}
+
+function contextPackage(mode) {
+  const lane = session.lanes[mode];
+  const text = contextText(lane);
+  const box = el("div", "paquete");
+  const questionRow = el("div", "paquete-fila");
+  questionRow.append(el("span", "paquete-rotulo", "Tu pregunta"), el("p", "paquete-pregunta", session.question));
+  const chipsRow = el("div", "paquete-fila");
+  const chips = el("div", "paquete-fragmentos");
+  lane.sources.forEach((source, index) => chips.append(chip(mode, source, index + 1)));
+  chipsRow.append(el("span", "paquete-rotulo", plural(lane.sources.length, "fragmento")), chips);
+  box.append(questionRow, chipsRow, el("p", "paquete-tamano", "En total, " + text.length.toLocaleString("es-AR") + " caracteres: la pregunta y estos fragmentos completos. Nada más del proyecto."));
+  return [box,
+    disclosure("Ver la pregunta y los fragmentos tal cual se envían", text, "Pregunta y fragmentos que se envían al modelo"),
+    disclosure("Ver las instrucciones fijas que acompañan cada consulta", MODEL_INSTRUCTIONS, "Instrucciones fijas para el modelo")];
+}
+
+function contextBlock(mode) {
+  const lane = session.lanes[mode];
+  const block = el("div", "contexto");
+  block.append(el("h4", "bloque-titulo", session.modelAvailable ? "Esto es lo que recibirá el modelo" : "Esto es lo que recibiría el modelo"));
+  block.append(...contextPackage(mode));
+  if (!session.modelAvailable) {
+    block.append(el("p", "contexto-nota", "En esta demo no se envía: el servidor no tiene una clave de OpenAI."));
+    return block;
+  }
+  block.append(el("p", "contexto-nota", "Nada sale de este servidor hasta que tocás el botón."));
+  const send = button("boton-principal", lane.answerStatus === "loading" ? "Generando la respuesta…" : "Enviar a OpenAI y responder", () => generateAnswer(mode));
+  send.disabled = session.busy;
+  block.append(send);
+  return block;
+}
+
+/* ---------- respuesta ---------- */
+
+function abstentionBox(title, text, withActions) {
+  const box = el("div", "abstencion");
+  box.append(el("h4", "", title), el("p", "", text));
+  if (withActions) {
+    const actions = el("div", "botonera");
+    actions.append(button("boton-secundario", "Hacer otra pregunta", () => { ui.question.focus(); ui.question.select(); }));
+    const good = session.suggestions.find(item => item.id === "codigo");
+    if (good && session.origin === "ejemplo") actions.append(button("boton-texto", "Ver una que sí tiene respuesta", () => runSuggestion(good)));
+    box.append(actions);
+  }
+  return box;
+}
+
+function answerBlock(mode) {
+  const lane = session.lanes[mode];
+  const data = lane.answer;
+  const wrap = el("div", "respuesta-cuerpo");
+  if (!lane.animateAnswer) wrap.style.animation = "none";
+  if (data.abstencion) {
+    wrap.append(abstentionBox("No hay evidencia para responder esto",
+      "Ninguno de los fragmentos encontrados contesta la pregunta. En lugar de inventar, el modelo prefirió no responder: es lo que tiene que hacer un buen sistema RAG.", true));
+  } else {
+    const heading = el("h4", "", "Respuesta");
+    heading.id = "answer-" + mode;
+    heading.tabIndex = -1;
+    const total = lane.sources.length;
+    const text = el("p", "respuesta-texto", data.respuesta);
+    const chips = el("p", "citas");
+    chips.append(el("span", "", data.citas.length === 1 ? "Fuente citada" : "Fuentes citadas"));
+    data.citas.forEach((number, i) => {
+      const source = lane.sources[number - 1];
+      const node = button("cita", source.ruta.split("/").pop() + " " + shortPlace(source), () => focusSource(mode, number));
+      node.style.setProperty("--i", i);
+      node.setAttribute("aria-label", "Cita " + number + ": " + source.ruta + ", " + placeOf(source) + ". Mostrar el fragmento");
+      if (lane.animateAnswer) requestAnimationFrame(() => requestAnimationFrame(() => node.classList.add("marcada")));
+      else { node.style.transition = "none"; node.classList.add("marcada"); }
+      chips.append(node);
+    });
+    wrap.append(heading, text, chips,
+      el("p", "respuesta-resumen", "Usó " + data.citas.length + " de los " + plural(total, "fragmento") + " que recibió."));
+  }
+  const sent = el("details", "desplegable");
+  sent.append(el("summary", "", "Ver lo que recibió el modelo"));
+  const inner = el("div", "contexto");
+  inner.append(...contextPackage(mode));
+  sent.append(inner);
+  wrap.append(sent);
+  if (data.tiempos && Number(data.tiempos.modelo || 0) > 0)
+    wrap.append(el("p", "contexto-nota", "El modelo tardó " + formatSeconds(data.tiempos.modelo) + "."));
+  return wrap;
+}
+
+/* ---------- columnas ---------- */
+
+function laneHeader(mode) {
+  const lane = session.lanes[mode];
+  const head = el("div", "carril-cabeza");
+  const title = el("h3", "", LANE_NAME[mode]);
+  title.id = "lane-" + mode + "-title";
+  title.tabIndex = -1;
+  let detail = mode === "acotado" ? "Busca palabras en común con tu pregunta, en este servidor." : "Busca por palabras y también por significado, con OpenAI.";
+  if (lane.status === "ready") {
+    detail = (mode === "acotado" ? "Palabras en común, en este servidor. " : "Palabras y significado, con OpenAI. ") +
+      "Tardó " + formatSeconds(lane.seconds) + ".";
+    if (lane.translated) detail += " Buscó con la pregunta traducida: «" + lane.translated + "».";
+  }
+  head.append(title, el("p", "", detail));
+  return head;
+}
+
+function hybridEmpty() {
+  const box = el("div", "carril-vacio");
+  if (!session.modelAvailable) {
+    box.append(el("p", "", "La búsqueda híbrida necesita una clave de OpenAI en el servidor. En esta demo no está disponible."));
+    return box;
+  }
+  box.append(el("p", "", "Busca también por significado, así encuentra fragmentos que dicen lo mismo con otras palabras. Cuando termine, vas a poder comparar las dos columnas: qué fragmentos trajo cada una y qué respondió el modelo con cada una."));
+  const start = button("boton-secundario boton-hibrida", "Probar la búsqueda híbrida (usa OpenAI)", prepareHybrid);
+  start.disabled = session.busy;
+  start.id = "hybridStart";
+  box.append(start);
+  return box;
+}
+
+function hybridAuthorize() {
+  const lane = session.lanes.completo;
+  const prepared = session.origin === "ejemplo" && session.indexAvailable;
+  const box = el("div", "contexto");
+  box.append(el("h4", "bloque-titulo", "Antes de buscar"));
+  box.append(el("p", "", prepared ?
+    "El índice del ejemplo ya está preparado: solo se envía tu pregunta a OpenAI para calcular su vector. Los archivos no se envían." :
+    "Para comparar por significado se envía a OpenAI el texto permitido de tus archivos, para calcular sus vectores, y tu pregunta."));
+  const details = el("details", "desplegable");
+  details.append(el("summary", "", prepared ? "Ver la pregunta que se envía" : "Ver la pregunta y los archivos que se envían"));
+  const scope = el("div", "alcance");
+  scope.append(el("p", "", "Pregunta: «" + session.question + "»"));
+  const info = lane.pending && lane.pending.alcance;
+  if (info && !prepared) {
+    scope.append(el("p", "", plural(info.cantidad_fragmentos, "fragmento") + " de " + plural(info.rutas.length, "archivo") + ", unos " + Number(info.bytes_aproximados).toLocaleString("es-AR") + " bytes de texto."));
+    const list = el("ul");
+    info.rutas.forEach(path => list.append(el("li", "", path)));
+    scope.append(list);
+    const excluded = Object.keys(info.excluidos || {});
+    if (excluded.length) scope.append(el("p", "", plural(excluded.length, "archivo excluido", "archivos excluidos") + " por el filtro de privacidad."));
+  }
+  details.append(scope);
+  const actions = el("div", "botonera");
+  const go = button("boton-principal", prepared ? "Enviar la pregunta y buscar" : "Enviar los archivos y buscar", runHybrid);
+  go.id = "hybridGo";
+  actions.append(go, button("boton-texto", "Cancelar", cancelHybrid));
+  box.append(details, actions);
+  return box;
+}
+
+function lexicalEmpty(lane) {
+  const parts = [abstentionBox("No hay evidencia para responder esto",
+    "Ninguna parte del proyecto comparte palabras con tu pregunta. Sin evidencia, el sistema no responde: prefiere no inventar." +
+    (session.modelAvailable ? " Si creés que la respuesta sí está, probá la búsqueda híbrida, que también busca por significado." : " Probá con otras palabras."),
+    !session.modelAvailable)];
+  if (session.modelAvailable && !lane.translated && session.question.includes("¿")) {
+    const box = el("div", "contexto");
+    box.append(el("h4", "bloque-titulo", "Probar con la pregunta en inglés"),
+      el("p", "", "El código del proyecto está escrito en inglés, así que una pregunta en castellano puede no compartir palabras con él. Podés traducirla con OpenAI y buscar de nuevo en esta columna. Solo se envía tu pregunta, ningún archivo."),
+      disclosure("Ver lo que se envía", session.question, "Pregunta que se envía para traducir"));
+    const go = button("boton-secundario", "Traducir la pregunta y buscar de nuevo", translateQuestion);
+    go.disabled = session.busy;
+    box.append(go);
+    parts.push(box);
+  }
+  return parts;
+}
+
+function renderLane(mode) {
+  const lane = session.lanes[mode];
+  const container = $("lane-" + mode);
+  const nodes = [laneHeader(mode)];
+
+  if (lane.status === "loading") nodes.push(el("p", "carril-espera", mode === "completo" ? "Buscando por palabras y por significado…" : "Buscando en el código y los documentos…"));
+  else if (lane.status === "preparing") nodes.push(el("p", "carril-espera", "Preparando la búsqueda híbrida…"));
+  else if (lane.status === "error") nodes.push(el("p", "fragmentos-vacio", lane.error));
+  else if (mode === "completo" && lane.status === "empty") nodes.push(hybridEmpty());
+  else if (mode === "completo" && lane.status === "authorizing") nodes.push(hybridAuthorize());
+  else if (lane.status === "ready") {
+    if (!lane.sources.length) {
+      if (mode === "acotado") nodes.push(...lexicalEmpty(lane));
+      else nodes.push(abstentionBox("No hay evidencia para responder esto", "La búsqueda híbrida no encontró nada que se parezca lo suficiente a tu pregunta. Sin evidencia, el sistema no responde.", false));
+    } else {
+      if (!session.modelAvailable && mode === "acotado") {
+        const notice = el("div", "aviso");
+        const link = el("a", "", "Cómo correrlo en tu máquina");
+        link.href = "https://github.com/NicolasIgles/codebase-explorer-rag#probar-en-local";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        notice.append(el("strong", "", "Ya viste la primera mitad de RAG"),
+          el("p", "", "Esta demo está en modo solo búsqueda: no tiene una clave de OpenAI configurada. Estos fragmentos son los que recibiría el modelo para responder."), link);
+        nodes.push(notice);
+      }
+      nodes.push(lane.answerStatus === "ready" ? answerBlock(mode) : contextBlock(mode));
+      const list = el("div", "fragmentos");
+      list.setAttribute("aria-label", "Fragmentos de la búsqueda " + LANE_NAME[mode].toLowerCase());
+      const top = Math.max(...lane.sources.map(s => Number(s.puntuacion) || 0), 0);
+      const comparison = comparisonFor(mode);
+      lane.sources.forEach((source, index) => list.append(sourceCard(mode, source, index, top, comparison)));
+      nodes.push(el("h4", "bloque-titulo", "Fragmentos que encontró (" + lane.sources.length + ")"), list);
+    }
+  }
+  container.replaceChildren(...nodes);
+  lane.animate = false;
+  lane.animateAnswer = false;
+}
+
+function renderComparisonSummary() {
+  const lexical = session.lanes.acotado;
+  const hybrid = session.lanes.completo;
+  if (lexical.status !== "ready" || hybrid.status !== "ready") { ui.comparisonSummary.hidden = true; return; }
+  const before = lexical.sources, after = hybrid.sources;
+  const beforeRank = new Map(before.map((s, i) => [sourceKey(s), i + 1]));
+  const afterKeys = new Set(after.map(sourceKey));
+  const added = after.filter(s => !beforeRank.has(sourceKey(s))).length;
+  const dropped = before.filter(s => !afterKeys.has(sourceKey(s))).length;
+  const kept = after.length - added;
+  const moved = after.some((s, i) => beforeRank.has(sourceKey(s)) && beforeRank.get(sourceKey(s)) !== i + 1);
+  let text;
+  if (!before.length && !after.length) text = "Ninguna de las dos búsquedas encontró fragmentos.";
+  else if (!before.length) text = "La búsqueda por palabras no encontró nada; la híbrida trajo " + plural(after.length, "fragmento") + ".";
+  else if (!added && !dropped) text = "Las dos búsquedas trajeron los mismos " + plural(after.length, "fragmento") + (moved ? ", en otro orden." : ", en el mismo orden.");
+  else {
+    const parts = [];
+    if (added) parts.push("trajo " + plural(added, "fragmento nuevo", "fragmentos nuevos"));
+    if (kept) parts.push("mantuvo " + kept);
+    if (dropped) parts.push("dejó afuera " + dropped);
+    text = "Comparada con la búsqueda por palabras, la híbrida " + parts.join(", ").replace(/, ([^,]*)$/, " y $1") + ". Cada fragmento de la columna híbrida indica si es nuevo, si subió o si bajó de posición.";
+  }
+  ui.comparisonSummary.textContent = text;
+  ui.comparisonSummary.hidden = false;
+}
+
+function renderLaneSwitch() {
+  ui.laneSwitch.querySelectorAll(".carril-boton").forEach(node => {
+    node.setAttribute("aria-pressed", String(node.dataset.lane === session.visibleLane));
   });
+  MODES.forEach(mode => { $("lane-" + mode).dataset.visible = String(mode === session.visibleLane); });
 }
 
-function focusSource(number) {
-  const card = $("fragmento-" + number);
+function renderAll() {
+  if (!session.question) { ui.results.hidden = true; return; }
+  ui.results.hidden = false;
+  ui.resultsQuestion.textContent = session.question;
+  MODES.forEach(renderLane);
+  renderComparisonSummary();
+  renderLaneSwitch();
+  renderStages();
+  const anyAnswer = MODES.some(mode => session.lanes[mode].answerStatus === "ready" && !session.lanes[mode].answer.abstencion);
+  ui.resultFoot.textContent = anyAnswer ? "Una cita dice de dónde salió algo, no garantiza que esté bien: revisá las líneas citadas." : "";
+  ui.resultFoot.hidden = !anyAnswer;
+}
+
+function focusLaneElement(mode, id) {
+  session.visibleLane = mode;
+  renderLaneSwitch();
+  const node = $(id);
+  if (!node) return;
+  node.focus({ preventScroll: true });
+  const box = node.getBoundingClientRect();
+  if (box.top < 0 || box.bottom > window.innerHeight) node.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+}
+
+function focusSource(mode, number) {
+  session.visibleLane = mode;
+  renderLaneSwitch();
+  const card = $("frag-" + mode + "-" + number);
   if (!card) return;
   card.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
-  replay(card, "destello");
-  card.querySelectorAll(".linea").forEach(line => line.classList.remove("marcada"));
+  card.classList.remove("destello");
   void card.offsetWidth;
-  card.querySelectorAll(".linea").forEach(line => line.classList.add("marcada"));
+  card.classList.add("destello");
 }
 
 /* ---------- diálogo de fragmento ---------- */
 
 let lastFocus = null;
-async function openSource(number) {
-  if (!session.id || !session.queryId) return;
+async function openSource(mode, number) {
+  const lane = session.lanes[mode];
+  if (!lane.collectionId || !lane.queryId) return;
   try {
-    const data = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/fuentes/" + number);
+    const data = await api("/colecciones/" + lane.collectionId + "/consultas/" + lane.queryId + "/fuentes/" + number);
     const source = data.fuente;
-    const cited = session.cited.includes(number);
-    ui.sourceKind.textContent = "Fragmento " + number + (cited ? ", citado en la respuesta" : "");
+    const cited = lane.answerStatus === "ready" && !lane.answer.abstencion && lane.answer.citas.includes(number);
+    ui.sourceKind.textContent = LANE_NAME[mode] + ", fragmento " + number + (cited ? ", citado en la respuesta" : "");
     ui.sourceTitle.textContent = source.titulo || source.simbolo;
     ui.sourceLocation.textContent = source.ruta + ", " + placeOf(source);
-    ui.sourceCode.replaceChildren(...codeBlock(parseLines(source), source.tipo_fuente === "documento").childNodes);
-    ui.sourceCode.classList.toggle("codigo-texto", source.tipo_fuente === "documento");
+    const isText = source.tipo_fuente === "documento";
+    ui.sourceCode.replaceChildren(...codeBlock(parseLines(source), isText).childNodes);
+    ui.sourceCode.classList.toggle("codigo-texto", isText);
     lastFocus = document.activeElement;
     ui.sourceDialog.showModal();
     ui.closeSourceTop.focus();
@@ -367,292 +692,7 @@ ui.sourceDialog.addEventListener("close", () => {
   if (lastFocus && lastFocus.isConnected && !lastFocus.disabled) lastFocus.focus();
 });
 
-/* ---------- respuesta ---------- */
-
-function renderAnswer(data) {
-  ui.answer.replaceChildren();
-  ui.sendPanel.hidden = true;
-  ui.translatePanel.hidden = true;
-  const total = session.sources.length;
-  if (data.abstencion) {
-    ui.answerTitle.textContent = "Respuesta";
-    ui.resultSummary.textContent = "";
-    ui.resultSummary.hidden = true;
-    ui.answer.append(abstentionBox(
-      "No hay evidencia para responder esto",
-      "Ninguno de los fragmentos encontrados contesta la pregunta. En lugar de inventar, el modelo prefirió no responder: es lo que tiene que hacer un buen sistema RAG."
-    ));
-    ui.sourcesTitle.firstChild.textContent = "Lo más cercano que encontró ";
-    markCited([]);
-    setStage("responder", "abstained", "No respondió, por falta de evidencia");
-    announce("El modelo no respondió porque los fragmentos no alcanzan.");
-  } else {
-    const citas = (data.citas || []).filter(n => n >= 1 && n <= total);
-    ui.answerTitle.textContent = "Respuesta";
-    ui.resultSummary.hidden = false;
-    ui.resultSummary.textContent = "Basada en " + citas.length + " de " + plural(total, "fragmento encontrado", "fragmentos encontrados") + ". Tocá una cita para ver las líneas que la sostienen.";
-    const text = el("p", "respuesta-texto", data.respuesta);
-    const chips = el("p", "citas");
-    chips.append(el("span", "", citas.length === 1 ? "Fuente citada" : "Fuentes citadas"));
-    citas.forEach((number, i) => {
-      const source = session.sources[number - 1];
-      const chip = el("button", "cita", source.ruta.split("/").pop() + " " + shortPlace(source));
-      chip.type = "button";
-      chip.style.setProperty("--i", i);
-      chip.setAttribute("aria-label", "Cita " + number + ": " + source.ruta + ", " + placeOf(source) + ". Mostrar el fragmento");
-      chip.addEventListener("click", () => { focusSource(number); replay(chip, "marcada"); });
-      chips.append(chip);
-    });
-    ui.answer.append(text, chips);
-    markCited(citas);
-    requestAnimationFrame(() => requestAnimationFrame(() => chips.querySelectorAll(".cita").forEach(chip => chip.classList.add("marcada"))));
-    setStage("responder", "done", "Usó " + citas.length + " de los " + plural(total, "fragmento"));
-    ui.resultFoot.textContent += " Una cita dice de dónde salió algo, no garantiza que esté bien: revisá las líneas citadas.";
-    announce("Respuesta lista. " + data.respuesta);
-  }
-  ui.answer.hidden = false;
-  ui.answerStage.focus({ preventScroll: true });
-  revealIfNeeded(ui.answerStage);
-  if (data.tiempos && Number(data.tiempos.modelo || 0) > 0)
-    ui.resultFoot.textContent += " El modelo tardó " + formatSeconds(data.tiempos.modelo) + ".";
-}
-
-/* ---------- contexto para el modelo ---------- */
-
-function sourceChip(source, number) {
-  const chip = el("button", "ficha");
-  chip.type = "button";
-  chip.append(el("b", "", "[" + number + "]"), source.ruta.split("/").pop() + " " + shortPlace(source));
-  chip.setAttribute("aria-label", "Fragmento " + number + ": " + source.ruta + ", " + placeOf(source) + ". Mostrarlo");
-  chip.addEventListener("click", () => focusSource(number));
-  return chip;
-}
-
-function showContext() {
-  const total = session.sources.length;
-  ui.contextQuestion.textContent = session.question;
-  ui.contextCount.textContent = plural(total, "fragmento");
-  ui.contextChips.replaceChildren(...session.sources.map((source, index) => sourceChip(source, index + 1)));
-
-  /* Mismo formato que preparar_consulta y las instrucciones de validar_evidencia.py. */
-  const blocks = session.sources.map((source, index) => {
-    const name = [source.contenedor, source.simbolo].filter(Boolean).join(".");
-    return "[" + (index + 1) + "] " + serverPlace(source) + " (" + name + ")\n" + (source.codigo || "");
-  });
-  const text = "Pregunta: " + session.question + "\n\nFuentes:\n" + blocks.join("\n\n");
-  ui.sendPreview.textContent = text;
-  $("instructionsPreview").textContent = MODEL_INSTRUCTIONS;
-  ui.contextSize.textContent = "En total, " + text.length.toLocaleString("es-AR") + " caracteres: la pregunta y estos fragmentos completos, con su archivo y sus líneas. Nada más del proyecto.";
-}
-
-/* ---------- comparación entre la búsqueda por palabras y la híbrida ---------- */
-
-function renderComparison(before, after) {
-  const beforeRank = new Map(before.map((source, index) => [sourceKey(source), index + 1]));
-  const afterKeys = new Set(after.map(sourceKey));
-  const added = after.filter(source => !beforeRank.has(sourceKey(source))).length;
-  const dropped = before.filter(source => !afterKeys.has(sourceKey(source)));
-  const kept = after.length - added;
-  const moved = after.some((source, index) => beforeRank.has(sourceKey(source)) && beforeRank.get(sourceKey(source)) !== index + 1);
-
-  let summary;
-  if (!before.length) summary = "La búsqueda por palabras no había encontrado nada; la híbrida trajo " + plural(after.length, "fragmento") + ".";
-  else if (!added && !dropped.length) summary = "Las dos búsquedas trajeron los mismos " + plural(after.length, "fragmento") + (moved ? ", pero en otro orden." : " y en el mismo orden.");
-  else {
-    const parts = [];
-    if (added) parts.push("trajo " + plural(added, "fragmento nuevo", "fragmentos nuevos"));
-    if (kept) parts.push("mantuvo " + kept);
-    if (dropped.length) parts.push("dejó afuera " + dropped.length);
-    summary = "Frente a la búsqueda por palabras, la híbrida " + parts.join(", ").replace(/, ([^,]*)$/, " y $1") + ".";
-  }
-  ui.comparisonSummary.textContent = summary;
-
-  const rows = [];
-  after.forEach((source, index) => {
-    const position = index + 1;
-    const previous = beforeRank.get(sourceKey(source));
-    let note = null;
-    if (!previous) note = ["cambio cambio-nuevo", "nuevo"];
-    else if (previous > position) note = ["cambio cambio-sube", "sube " + (previous - position)];
-    else if (previous < position) note = ["cambio cambio-baja", "baja " + (position - previous)];
-    rows.push({ source, previous, position, note, cls: previous ? "" : "fila-nueva" });
-  });
-  dropped.forEach(source => rows.push({ source, previous: beforeRank.get(sourceKey(source)), position: null, note: ["cambio cambio-afuera", "quedó afuera"], cls: "fila-afuera" }));
-
-  ui.comparisonRows.replaceChildren(...rows.map((row, i) => {
-    const tr = el("tr", row.cls);
-    tr.style.setProperty("--i", i);
-    const name = el("td", "", row.source.ruta + " " + shortPlace(row.source));
-    const lexical = el("td");
-    lexical.append(row.previous ? el("span", "posicion", String(row.previous)) : el("span", "cambio-afuera", "no estaba"));
-    const hybrid = el("td");
-    if (row.position) hybrid.append(el("span", "posicion", String(row.position)));
-    if (row.note) hybrid.append(el("span", row.note[0], row.note[1]));
-    tr.append(name, lexical, hybrid);
-    return tr;
-  }));
-  ui.comparison.hidden = false;
-}
-
-const MODEL_INSTRUCTIONS =
-  "Decidí si alguno de los fragmentos realmente contiene evidencia para responder. " +
-  "Un nombre parecido no alcanza. Si hay evidencia, respondé en español de forma breve " +
-  "y poné en fuentes solo los números que respaldan la respuesta; no agregues citas al texto. " +
-  "Si no hay evidencia suficiente, usá hay_evidencia=false, respuesta vacía y fuentes vacías. " +
-  "No inventes comportamiento que no figure en los fragmentos.";
-
-function serverPlace(source) {
-  const place = source.ubicacion || {};
-  const base = place.tipo === "pagina" ? source.ruta + ":página " + place.pagina : source.ruta + ":" + source.inicio + "-" + source.fin;
-  return place.columna_inicio != null ? base + ":columnas " + place.columna_inicio + "-" + place.columna_fin : base;
-}
-
-function abstentionBox(title, text) {
-  const box = el("div", "abstencion");
-  box.append(el("h3", "", title), el("p", "", text));
-  const actions = el("div", "botonera");
-  const again = el("button", "boton-principal", "Hacer otra pregunta");
-  again.type = "button";
-  again.addEventListener("click", () => { ui.question.focus(); ui.question.select(); });
-  actions.append(again);
-  const good = session.suggestions.find(item => item.id === "codigo");
-  if (good && session.selectedOrigin === "ejemplo") {
-    const example = el("button", "boton-secundario", "Ver una que sí tiene respuesta");
-    example.type = "button";
-    example.addEventListener("click", () => runSuggestion(good));
-    actions.append(example);
-  }
-  box.append(actions);
-  return box;
-}
-
-/* ---------- después de cada búsqueda ---------- */
-
-function clearResults() {
-  ui.results.hidden = true;
-  ui.answer.hidden = true;
-  ui.answer.replaceChildren();
-  ui.sendPanel.hidden = true;
-  ui.noModelPanel.hidden = true;
-  ui.translatePanel.hidden = true;
-  ui.modeRow.hidden = true;
-  ui.hybridPanel.hidden = true;
-  ui.hybridQuestion.textContent = "";
-  ui.sendDetails.open = false;
-  ui.comparison.hidden = true;
-  ui.sources.replaceChildren();
-  ui.resultFoot.textContent = "";
-  ui.resultSummary.hidden = false;
-  session.queryId = null;
-  session.sources = [];
-  session.cited = [];
-  session.question = "";
-  session.matchQuestion = null;
-  session.previousActions = null;
-  session.previousKeys = null;
-  ui.answerButton.hidden = false;
-  resetStages();
-  status("", false);
-}
-
-function showNextSteps(options) {
-  const keepPosition = Boolean(options && options.keepPosition);
-  const count = session.sources.length;
-  const hybrid = session.mode === "completo";
-  session.previousActions = null;
-  ui.results.hidden = false;
-  ui.answer.hidden = true;
-  ui.sendPanel.hidden = true;
-  ui.noModelPanel.hidden = true;
-  ui.translatePanel.hidden = true;
-  ui.resultSummary.hidden = false;
-  ui.modeRow.hidden = hybrid;
-  ui.modeTag.dataset.mode = hybrid ? "completo" : "acotado";
-  ui.modeTag.textContent = hybrid ? "Búsqueda híbrida: palabras y significado" : "Búsqueda por palabras";
-  ui.hybridButton.hidden = !session.modelAvailable || hybrid;
-  ui.stages.classList.add("con-resultado");
-
-  if (count) {
-    setStage("recuperar", "done", plural(count, "fragmento encontrado", "fragmentos encontrados") + (hybrid ? ", con palabras y significado" : ", en este servidor"));
-    ui.answerTitle.textContent = "Encontró " + plural(count, "fragmento");
-    showContext();
-    ui.sendPanel.hidden = false;
-    if (session.modelAvailable) {
-      setStage("contexto", "waiting", "Revisá lo que recibiría el modelo");
-      ui.resultSummary.hidden = true;
-      ui.contextTitle.textContent = "Esto es lo que recibirá el modelo";
-      ui.contextNote.textContent = "Nada sale de este servidor hasta que tocás el botón.";
-      ui.answerButton.hidden = false;
-    } else {
-      setStage("contexto", "done", "Tu pregunta y " + plural(count, "fragmento") + ", listos para el modelo");
-      setStage("responder", "skipped", "Necesita una clave de OpenAI en el servidor");
-      ui.resultSummary.hidden = true;
-      ui.noModelPanel.hidden = false;
-      ui.contextTitle.textContent = "Esto es lo que recibiría el modelo";
-      ui.contextNote.textContent = "En esta demo no se envía: el servidor no tiene una clave de OpenAI.";
-      ui.answerButton.hidden = true;
-    }
-    announce(plural(count, "fragmento encontrado", "fragmentos encontrados") + ".");
-  } else {
-    /* Sin fragmentos el servidor se abstiene sin llamar al modelo (generar_respuesta). */
-    setStage("recuperar", "done", "Ningún fragmento coincide");
-    setStage("contexto", "skipped", "Sin fragmentos, no hay nada que armar");
-    setStage("responder", "abstained", "No respondió, por falta de evidencia");
-    ui.answerTitle.textContent = "Respuesta";
-    ui.resultSummary.hidden = true;
-    let text = (hybrid ?
-      "La búsqueda híbrida no encontró nada que se parezca lo suficiente a tu pregunta." :
-      "La búsqueda por palabras no encontró ninguna parte del proyecto que comparta palabras con tu pregunta.") +
-      " Sin evidencia, el sistema no responde: prefiere no inventar.";
-    if (!hybrid && session.modelAvailable) text += " Si creés que la respuesta sí está, probá la búsqueda híbrida, que también busca por significado.";
-    ui.answer.replaceChildren(abstentionBox("No hay evidencia para responder esto", text));
-    ui.answer.hidden = false;
-    ui.sourcesTitle.firstChild.textContent = "Lo que encontró la búsqueda ";
-    if (!hybrid && session.modelAvailable && session.question.includes("¿")) {
-      ui.translatePreview.textContent = session.question;
-      ui.translatePanel.hidden = false;
-    }
-    announce("No se encontraron fragmentos. El sistema no responde sin evidencia.");
-  }
-  if (!keepPosition) {
-    revealIfNeeded(ui.stages);
-    ui.answerStage.focus({ preventScroll: true });
-  }
-}
-
-/* ---------- acciones ---------- */
-
-function setBusy(value) {
-  session.busy = value;
-  [ui.searchButton, ui.backToLexical, ui.question, ui.uploadFiles, ui.useExample, ui.useUpload, ui.answerButton, ui.translateButton, ui.hybridButton, ui.indexButton, ui.cancelIndex]
-    .forEach(node => { node.disabled = value; });
-  ui.suggestions.querySelectorAll("button").forEach(node => { node.disabled = value; });
-  ui.searchButton.textContent = value ? "Buscando…" : "Buscar en el proyecto";
-}
-
-async function ensureCollection(mode) {
-  const origin = session.selectedOrigin;
-  if (session.id && session.mode === mode && session.origin === origin) return null;
-  await discardPendingHybrid();
-  if (session.id) {
-    const wasUpload = session.origin === "carga";
-    try { await api("/colecciones/" + session.id, { method: "DELETE" }); }
-    catch { /* La colección también puede haber vencido. */ }
-    session.id = null;
-    if (wasUpload) {
-      ui.deleteUpload.hidden = true;
-      ui.uploadSummary.textContent = filesSummary();
-    }
-  }
-  const created = await createCollection(mode);
-  session.id = created.coleccion_id;
-  session.mode = mode;
-  session.origin = origin;
-  session.queryId = null;
-  ui.deleteUpload.hidden = origin !== "carga";
-  if (origin === "carga") ui.uploadSummary.textContent = filesSummary() + ". Ya están en el servidor; se borran en menos de 24 horas.";
-  return created;
-}
+/* ---------- colecciones en el servidor ---------- */
 
 async function createCollection(mode) {
   if (session.selectedOrigin === "carga") {
@@ -668,22 +708,57 @@ async function createCollection(mode) {
   return api("/ejemplo/colecciones", { method: "POST", body: JSON.stringify({ modo: mode }) });
 }
 
-async function discardPendingHybrid() {
-  if (!session.pendingHybrid) return;
-  const id = session.pendingHybrid.coleccion_id;
-  session.pendingHybrid = null;
-  try { await api("/colecciones/" + id, { method: "DELETE" }); }
-  catch { /* Puede haber vencido mientras se revisaba el alcance. */ }
+function collectionIds() {
+  const ids = [];
+  MODES.forEach(mode => {
+    const lane = session.lanes[mode];
+    if (lane.collectionId) ids.push(lane.collectionId);
+    if (lane.pending && lane.pending.coleccion_id !== lane.collectionId) ids.push(lane.pending.coleccion_id);
+  });
+  return ids;
 }
 
-function releaseCollections() {
-  const ids = [session.id, session.pendingHybrid && session.pendingHybrid.coleccion_id].filter(Boolean);
-  ids.forEach(id => {
-    try { fetch("/colecciones/" + id, { method: "DELETE", keepalive: true }); }
-    catch { /* El servidor la libera al vencer. */ }
-  });
+async function releaseCollections() {
+  const ids = collectionIds();
+  await Promise.all(ids.map(id => api("/colecciones/" + id, { method: "DELETE" }).catch(() => { /* puede haber vencido */ })));
 }
-window.addEventListener("pagehide", releaseCollections);
+
+window.addEventListener("pagehide", () => {
+  collectionIds().forEach(id => {
+    try { fetch("/colecciones/" + id, { method: "DELETE", keepalive: true }); }
+    catch { /* el servidor la libera al vencer */ }
+  });
+});
+
+function resetLanes() {
+  session.lanes = { acotado: newLane("acotado"), completo: newLane("completo") };
+  session.lastLane = "acotado";
+  session.visibleLane = "acotado";
+}
+
+async function clearAll() {
+  await releaseCollections();
+  resetLanes();
+  session.question = "";
+  ui.deleteUpload.hidden = true;
+  if (session.origin === "carga") ui.uploadSummary.textContent = filesSummary();
+  resetStages();
+  status("", false);
+  renderAll();
+}
+
+/* ---------- acciones ---------- */
+
+function setBusy(value) {
+  session.busy = value;
+  [ui.searchButton, ui.question, ui.uploadFiles, ui.useExample, ui.useUpload]
+    .forEach(node => { node.disabled = value; });
+  ui.suggestions.querySelectorAll("button").forEach(node => { node.disabled = value; });
+  document.querySelectorAll(".carril button").forEach(node => {
+    if (!node.classList.contains("ficha") && !node.classList.contains("cita") && !node.classList.contains("ver-completo")) node.disabled = value;
+  });
+  ui.searchButton.textContent = value ? "Buscando…" : "Buscar en el proyecto";
+}
 
 function filesSummary() {
   const files = Array.from(ui.uploadFiles.files);
@@ -695,164 +770,147 @@ async function search() {
   const question = ui.question.value.trim();
   stopIntro();
   if (!question) { status("Escribí una pregunta para buscar en el proyecto.", true); ui.question.focus(); return; }
-  clearResults();
   setBusy(true);
-  setStage("recuperar", "active", session.selectedOrigin === "carga" ? "Preparando tus archivos y buscando…" : "Buscando en el código y los documentos…");
+  status("", false);
+  await releaseCollections();
+  resetLanes();
+  session.question = question;
+  session.origin = session.selectedOrigin;
+  const lane = session.lanes.acotado;
+  lane.status = "loading";
+  ui.stages.classList.add("con-resultado");
+  renderAll();
+  revealIfNeeded(ui.stages);
   try {
-    await ensureCollection("acotado");
-    const query = await api("/colecciones/" + session.id + "/consultas", {
+    const created = await createCollection("acotado");
+    lane.collectionId = created.coleccion_id;
+    if (session.origin === "carga") {
+      ui.deleteUpload.hidden = false;
+      ui.uploadSummary.textContent = filesSummary() + ". Ya están en el servidor; se borran en menos de 24 horas.";
+    }
+    const query = await api("/colecciones/" + lane.collectionId + "/consultas", {
       method: "POST", body: JSON.stringify({ pregunta: question })
     });
-    session.question = question;
-    session.queryId = query.consulta_id;
-    renderSources(query.fuentes, query.tiempos.recuperacion);
-    showNextSteps();
+    Object.assign(lane, { status: "ready", queryId: query.consulta_id, sources: query.fuentes, seconds: query.tiempos.recuperacion, animate: true });
+    renderAll();
+    focusLaneElement("acotado", "lane-acotado-title");
+    announce(query.fuentes.length ? plural(query.fuentes.length, "fragmento encontrado", "fragmentos encontrados") + " con la búsqueda por palabras." : "La búsqueda por palabras no encontró fragmentos. El sistema no responde sin evidencia.");
   } catch (error) {
-    resetStages();
-    status(error.message, true);
-  } finally { setBusy(false); }
+    Object.assign(lane, { status: "error", error: "No se pudo buscar: " + error.message });
+    renderAll();
+    status("No se pudo buscar: " + error.message, true);
+  } finally {
+    setBusy(false);
+  }
 }
 
-async function generateAnswer() {
-  if (session.busy || !session.queryId || !session.sources.length) return;
+async function generateAnswer(mode) {
+  const lane = session.lanes[mode];
+  if (session.busy || !lane.queryId || !lane.sources.length) return;
+  session.lastLane = mode;
+  lane.answerStatus = "loading";
   setBusy(true);
-  setStage("contexto", "done", "Enviaste tu pregunta y " + plural(session.sources.length, "fragmento") + " a OpenAI");
-  setStage("responder", "active", "Generando la respuesta y comprobando las citas…");
+  renderAll();
   try {
-    const answer = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/respuesta", {
-      method: "POST", body: JSON.stringify({ autorizacion: session.mode === "completo" ? "INDEXAR" : "ENVIAR" })
+    const data = await api("/colecciones/" + lane.collectionId + "/consultas/" + lane.queryId + "/respuesta", {
+      method: "POST", body: JSON.stringify({ autorizacion: mode === "completo" ? "INDEXAR" : "ENVIAR" })
     });
-    renderAnswer(answer);
+    data.citas = (data.citas || []).filter(n => n >= 1 && n <= lane.sources.length);
+    Object.assign(lane, { answer: data, answerStatus: "ready", animateAnswer: true });
+    setBusy(false);
+    renderAll();
+    focusLaneElement(mode, data.abstencion ? "lane-" + mode + "-title" : "answer-" + mode);
+    announce(data.abstencion ? LANE_NAME[mode] + ": el modelo no respondió porque los fragmentos no alcanzan." : LANE_NAME[mode] + ": respuesta lista. " + data.respuesta);
   } catch (error) {
-    setStage("contexto", "waiting", "Revisá lo que recibiría el modelo");
-    setStage("responder", "idle");
+    lane.answerStatus = "none";
+    setBusy(false);
+    renderAll();
     status("No se pudo generar la respuesta: " + error.message, true);
-  } finally { setBusy(false); }
+  }
 }
 
 async function translateQuestion() {
-  if (session.busy || !session.queryId || session.sources.length) return;
+  const lane = session.lanes.acotado;
+  if (session.busy || !lane.queryId || lane.sources.length) return;
+  session.lastLane = "acotado";
   setBusy(true);
-  setStage("recuperar", "active", "Traduciendo la pregunta y buscando de nuevo…");
+  lane.status = "loading";
+  renderAll();
   try {
-    const translated = await api("/colecciones/" + session.id + "/consultas/" + session.queryId + "/traduccion", {
+    const data = await api("/colecciones/" + lane.collectionId + "/consultas/" + lane.queryId + "/traduccion", {
       method: "POST", body: JSON.stringify({ autorizacion: "ENVIAR" })
     });
-    session.matchQuestion = translated.consulta_ingles || null;
-    renderSources(translated.fuentes, translated.tiempos.recuperacion);
-    showNextSteps();
-    ui.translatePanel.hidden = true;
-    if (translated.consulta_ingles) {
-      const note = "Buscó con la pregunta traducida: «" + translated.consulta_ingles + "».";
-      if (translated.fuentes.length) { ui.resultSummary.hidden = false; ui.resultSummary.textContent = note + " " + ui.resultSummary.textContent; }
-      else status(note + " Tampoco encontró fragmentos.", false);
-    }
+    Object.assign(lane, {
+      status: "ready", sources: data.fuentes, seconds: data.tiempos.recuperacion, animate: true,
+      matchQuestion: data.consulta_ingles || null, translated: data.consulta_ingles || "sin traducción utilizable",
+      answer: null, answerStatus: "none"
+    });
   } catch (error) {
-    setStage("recuperar", "done", "Ningún fragmento coincide");
+    lane.status = "ready";
     status("No se pudo traducir la pregunta: " + error.message, true);
-  } finally { setBusy(false); }
+  } finally {
+    setBusy(false);
+    renderAll();
+    focusLaneElement("acotado", "lane-acotado-title");
+  }
 }
 
 async function prepareHybrid() {
-  if (session.busy || !session.queryId || !session.modelAvailable) return;
+  const lane = session.lanes.completo;
+  if (session.busy || !session.modelAvailable || !session.question) return;
   setBusy(true);
+  lane.status = "preparing";
+  renderAll();
   try {
-    const created = await createCollection("completo");
-    session.pendingHybrid = created;
-    showScope(created.alcance);
-    const prepared = session.selectedOrigin === "ejemplo" && session.indexAvailable;
-    ui.hybridTitle.textContent = prepared ? "Comparar con la búsqueda híbrida" : "Preparar la búsqueda híbrida";
-    ui.hybridDetailsLabel.textContent = prepared ? "Ver la pregunta que se envía" : "Ver la pregunta y los archivos que se envían";
-    ui.hybridQuestion.textContent = "Pregunta que se envía: «" + session.question + "»";
-    ui.indexButton.textContent = prepared ? "Enviar la pregunta y comparar" : "Enviar los archivos y comparar";
-    ui.hybridSummary.textContent = prepared ?
-      "La búsqueda híbrida busca por palabras y también por significado. Después vas a ver, fragmento por fragmento, qué cambió frente a la búsqueda por palabras. El índice del ejemplo ya está preparado: solo se envía tu pregunta a OpenAI para calcular su vector, los archivos no." :
-      "La búsqueda híbrida busca por palabras y también por significado. Después vas a ver, fragmento por fragmento, qué cambió frente a la búsqueda por palabras. Para eso se envía a OpenAI el texto permitido de tus archivos, para calcular sus vectores, y tu pregunta. Revisá el detalle antes de autorizar.";
-    session.previousActions = {
-      send: !ui.sendPanel.hidden,
-      noModel: !ui.noModelPanel.hidden,
-      translate: !ui.translatePanel.hidden,
-      summary: ui.resultSummary.textContent
-    };
-    ui.sendPanel.hidden = true;
-    ui.translatePanel.hidden = true;
-    ui.hybridButton.hidden = true;
-    ui.hybridPanel.hidden = false;
-  } catch (error) { status(error.message, true); }
-  finally {
-    setBusy(false);
-    if (!ui.hybridPanel.hidden) {
-      ui.indexButton.focus({ preventScroll: true });
-      ui.hybridPanel.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
-    }
-  }
-}
-
-function showScope(scope) {
-  ui.scope.replaceChildren();
-  if (!scope) { ui.scope.hidden = true; return; }
-  ui.scope.hidden = false;
-  ui.scope.append(el("p", "", plural(scope.cantidad_fragmentos, "fragmento") + " de " + plural(scope.rutas.length, "archivo") + ", unos " + Number(scope.bytes_aproximados).toLocaleString("es-AR") + " bytes de texto."));
-  const list = el("ul");
-  scope.rutas.forEach(path => list.append(el("li", "", path)));
-  ui.scope.append(list);
-  const excluded = Object.keys(scope.excluidos || {});
-  if (excluded.length) ui.scope.append(el("p", "", plural(excluded.length, "archivo excluido", "archivos excluidos") + " por el filtro de privacidad."));
-}
-
-async function runHybrid() {
-  if (session.busy || !session.pendingHybrid) return;
-  setBusy(true);
-  const next = session.pendingHybrid;
-  const previousSources = session.sources.slice();
-  const previousKeys = new Set(previousSources.map(sourceKey));
-  setStage("recuperar", "active", "Buscando por palabras y por significado…");
-  setStage("contexto", "idle");
-  setStage("responder", "idle");
-  try {
-    const query = await api("/colecciones/" + next.coleccion_id + "/consultas", {
-      method: "POST", body: JSON.stringify({ pregunta: session.question, autorizacion: "INDEXAR" })
-    });
-    const oldId = session.id;
-    session.id = next.coleccion_id;
-    session.mode = "completo";
-    session.queryId = query.consulta_id;
-    session.pendingHybrid = null;
-    session.previousKeys = previousKeys;
-    session.matchQuestion = null;
-    ui.hybridPanel.hidden = true;
-    renderSources(query.fuentes, query.tiempos.recuperacion);
-    showNextSteps({ keepPosition: true });
-    renderComparison(previousSources, query.fuentes);
-    ui.comparisonTitle.focus({ preventScroll: true });
-    ui.comparison.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
-    announce(ui.comparisonSummary.textContent);
-    if (oldId) api("/colecciones/" + oldId, { method: "DELETE" }).catch(() => {});
+    lane.pending = await createCollection("completo");
+    lane.status = "authorizing";
   } catch (error) {
-    await discardPendingHybrid();
-    ui.hybridPanel.hidden = true;
-    showNextSteps({ keepPosition: true });
-    status("No se pudo hacer la búsqueda híbrida: " + error.message, true);
-  } finally { setBusy(false); }
+    lane.status = "empty";
+    status("No se pudo preparar la búsqueda híbrida: " + error.message, true);
+  } finally {
+    setBusy(false);
+    renderAll();
+    if (lane.status === "authorizing") focusLaneElement("completo", "hybridGo");
+  }
 }
 
 async function cancelHybrid() {
-  if (session.busy || !session.pendingHybrid) return;
-  setBusy(true);
-  await discardPendingHybrid();
-  const previous = session.previousActions;
-  session.previousActions = null;
-  ui.hybridPanel.hidden = true;
-  ui.hybridButton.hidden = false;
-  if (previous) {
-    ui.sendPanel.hidden = !previous.send;
-    ui.noModelPanel.hidden = !previous.noModel;
-    ui.translatePanel.hidden = !previous.translate;
-    ui.resultSummary.textContent = previous.summary;
-  }
-  setBusy(false);
-  ui.hybridButton.focus();
+  const lane = session.lanes.completo;
+  if (session.busy) return;
+  if (lane.pending) api("/colecciones/" + lane.pending.coleccion_id, { method: "DELETE" }).catch(() => {});
+  lane.pending = null;
+  lane.status = "empty";
+  renderAll();
+  focusLaneElement("completo", "hybridStart");
   announce("Búsqueda híbrida cancelada. No se envió nada a OpenAI.");
+}
+
+async function runHybrid() {
+  const lane = session.lanes.completo;
+  if (session.busy || !lane.pending) return;
+  session.lastLane = "completo";
+  setBusy(true);
+  lane.status = "loading";
+  renderAll();
+  try {
+    const query = await api("/colecciones/" + lane.pending.coleccion_id + "/consultas", {
+      method: "POST", body: JSON.stringify({ pregunta: session.question, autorizacion: "INDEXAR" })
+    });
+    Object.assign(lane, {
+      status: "ready", collectionId: lane.pending.coleccion_id, pending: null,
+      queryId: query.consulta_id, sources: query.fuentes, seconds: query.tiempos.recuperacion, animate: true
+    });
+    setBusy(false);
+    renderAll();
+    focusLaneElement("completo", "lane-completo-title");
+    announce(ui.comparisonSummary.hidden ? "Búsqueda híbrida lista." : ui.comparisonSummary.textContent);
+  } catch (error) {
+    if (lane.pending) api("/colecciones/" + lane.pending.coleccion_id, { method: "DELETE" }).catch(() => {});
+    Object.assign(lane, { status: "empty", pending: null });
+    setBusy(false);
+    renderAll();
+    status("No se pudo hacer la búsqueda híbrida: " + error.message, true);
+  }
 }
 
 function runSuggestion(item) {
@@ -864,9 +922,8 @@ function runSuggestion(item) {
 
 /* ---------- origen: ejemplo o archivos propios ---------- */
 
-function chooseOrigin(origin) {
+async function chooseOrigin(origin) {
   if (session.busy) return;
-  discardPendingHybrid();
   session.selectedOrigin = origin;
   ui.uploadPanel.hidden = origin !== "carga";
   ui.suggestionsWrap.hidden = origin !== "ejemplo";
@@ -874,37 +931,26 @@ function chooseOrigin(origin) {
   ui.collectionHint.textContent = origin === "carga" ?
     "La búsqueda se hace en este servidor. Nada se envía a OpenAI sin que lo autorices." :
     "Un gestor de tareas ficticio, con código Python y documentos de texto.";
-  ui.searchButton.textContent = "Buscar en el proyecto";
   ui.useExample.setAttribute("aria-pressed", String(origin === "ejemplo"));
   ui.useUpload.setAttribute("aria-pressed", String(origin === "carga"));
   ui.question.value = "";
   updateCounter();
-  clearResults();
+  await clearAll();
 }
 
 ui.useExample.addEventListener("click", () => chooseOrigin("ejemplo"));
 ui.useUpload.addEventListener("click", () => chooseOrigin("carga"));
 ui.uploadFiles.addEventListener("change", () => {
   ui.uploadSummary.textContent = filesSummary();
-  if (session.origin === "carga") session.mode = null;
-  discardPendingHybrid();
-  clearResults();
+  clearAll();
 });
 ui.deleteUpload.addEventListener("click", async () => {
-  if (!session.id || session.origin !== "carga") return;
-  try {
-    await discardPendingHybrid();
-    await api("/colecciones/" + session.id, { method: "DELETE" });
-    session.id = null;
-    session.mode = null;
-    session.queryId = null;
-    ui.deleteUpload.hidden = true;
-    ui.uploadFiles.value = "";
-    ui.uploadSummary.textContent = filesSummary();
-    clearResults();
-    status("Tus archivos se borraron del servidor.", false);
-    ui.question.focus();
-  } catch (error) { status(error.message, true); }
+  if (session.busy || session.origin !== "carga") return;
+  await clearAll();
+  ui.uploadFiles.value = "";
+  ui.uploadSummary.textContent = filesSummary();
+  status("Tus archivos se borraron del servidor.", false);
+  ui.question.focus();
 });
 
 /* ---------- formulario y navegación ---------- */
@@ -916,22 +962,12 @@ function updateCounter() {
 }
 
 ui.queryForm.addEventListener("submit", event => { event.preventDefault(); search(); });
-ui.answerButton.addEventListener("click", generateAnswer);
-ui.translateButton.addEventListener("click", translateQuestion);
-ui.hybridButton.addEventListener("click", prepareHybrid);
-ui.indexButton.addEventListener("click", runHybrid);
-ui.cancelIndex.addEventListener("click", cancelHybrid);
-ui.backToLexical.addEventListener("click", () => {
-  if (session.busy) return;
-  ui.question.value = session.question;
-  search();
-});
-ui.question.addEventListener("input", () => {
-  updateCounter();
-  if (session.question && ui.question.value.trim() !== session.question) {
-    discardPendingHybrid();
-    clearResults();
-  }
+ui.question.addEventListener("input", updateCounter);
+ui.laneSwitch.addEventListener("click", event => {
+  const target = event.target.closest(".carril-boton");
+  if (!target) return;
+  session.visibleLane = target.dataset.lane;
+  renderLaneSwitch();
 });
 
 ui.menuButton.addEventListener("click", () => {
@@ -969,12 +1005,10 @@ async function initialize() {
     ui.apiState.textContent = state.modelo_disponible ? "Esta demo responde con OpenAI" : "Esta demo está en modo solo búsqueda";
     const visible = questions.filter(item => SUGERENCIAS_VISIBLES.includes(item.id));
     (visible.length ? visible : questions).forEach(item => {
-      const button = el("button", "sugerencia" + (item.id === "abstencion" ? " sugerencia-sin" : ""), item.pregunta);
-      button.type = "button";
-      button.title = item.descripcion;
-      if (item.id === "abstencion") button.append(" ", el("span", "", "(no está en el proyecto)"));
-      button.addEventListener("click", () => runSuggestion(item));
-      ui.suggestions.append(button);
+      const node = button("sugerencia" + (item.id === "abstencion" ? " sugerencia-sin" : ""), item.pregunta, () => runSuggestion(item));
+      node.title = item.descripcion;
+      if (item.id === "abstencion") node.append(" ", el("span", "", "(no está en el proyecto)"));
+      ui.suggestions.append(node);
     });
   } catch (error) {
     ui.apiState.dataset.model = "no";
@@ -1019,11 +1053,11 @@ function renderBenchmark(metricKey) {
     const value = item[metricKey];
     row.querySelector(".barra-valor").textContent = value + " de " + metric.count;
     row.setAttribute("aria-label", item.name + ": " + value + " de " + metric.count);
-    row.querySelector(".barra").style.width = benchmarkSeen ? (value / metric.count) * 100 + "%" : "0%";
     row.querySelector(".barra").dataset.width = (value / metric.count) * 100 + "%";
+    row.querySelector(".barra").style.width = benchmarkSeen ? (value / metric.count) * 100 + "%" : "0%";
   });
-  document.querySelectorAll(".metrica").forEach(button => {
-    button.setAttribute("aria-pressed", String(button.dataset.metric === metricKey));
+  document.querySelectorAll(".metrica").forEach(node => {
+    node.setAttribute("aria-pressed", String(node.dataset.metric === metricKey));
   });
 }
 
@@ -1032,8 +1066,8 @@ function revealBenchmark() {
   document.querySelectorAll("#benchmarkChart .barra").forEach(bar => { bar.style.width = bar.dataset.width; });
 }
 
-document.querySelectorAll(".metrica").forEach(button => {
-  button.addEventListener("click", () => renderBenchmark(button.dataset.metric));
+document.querySelectorAll(".metrica").forEach(node => {
+  node.addEventListener("click", () => renderBenchmark(node.dataset.metric));
 });
 renderBenchmark("coverage");
 if ("IntersectionObserver" in window && !reduceMotion.matches) {

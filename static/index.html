@@ -112,90 +112,18 @@
         <p id="announcer" class="sr-only" aria-live="polite"></p>
 
         <div id="results" class="resultados" hidden>
-          <section id="answerStage" class="respuesta" tabindex="-1" aria-labelledby="answerTitle">
-            <h2 id="answerTitle">Resultado</h2>
-            <p id="resultSummary" class="respuesta-resumen"></p>
-            <div id="answer" class="respuesta-cuerpo" hidden></div>
-
-            <div id="comparison" class="comparacion" hidden>
-              <h3 id="comparisonTitle" tabindex="-1">Qué cambió con la búsqueda híbrida</h3>
-              <p id="comparisonSummary" class="comparacion-resumen"></p>
-              <div class="tabla-envoltura" tabindex="0" role="region" aria-labelledby="comparisonTitle">
-                <table class="comparacion-tabla">
-                  <caption class="sr-only">Posición de cada fragmento en la búsqueda por palabras y en la híbrida</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Fragmento</th>
-                      <th scope="col" class="col-modo" data-mode="acotado">Por palabras</th>
-                      <th scope="col" class="col-modo" data-mode="completo">Híbrida</th>
-                    </tr>
-                  </thead>
-                  <tbody id="comparisonRows"></tbody>
-                </table>
-              </div>
-              <p class="comparacion-nota">El número es la posición en cada búsqueda: 1 es el fragmento que la búsqueda consideró más parecido a tu pregunta. Solo los cinco primeros llegan al modelo. Los fragmentos de la búsqueda híbrida son los que se usan para responder.</p>
-              <button id="backToLexical" type="button" class="boton-texto">Volver a la búsqueda por palabras</button>
+          <div class="resultados-cabeza">
+            <h2 id="resultsTitle" tabindex="-1">Resultados para «<span id="resultsQuestion"></span>»</h2>
+            <p id="comparisonSummary" class="comparacion-resumen" hidden></p>
+            <div id="laneSwitch" class="carril-selector" role="group" aria-label="Qué búsqueda ver">
+              <button type="button" class="carril-boton" data-lane="acotado" aria-pressed="true">Por palabras</button>
+              <button type="button" class="carril-boton" data-lane="completo" aria-pressed="false">Híbrida</button>
             </div>
-
-            <div id="modeRow" class="modo" hidden>
-              <span id="modeTag" class="modo-etiqueta" data-mode="acotado">Búsqueda por palabras</span>
-              <button id="hybridButton" type="button" class="boton-secundario boton-hibrida">Comparar con la búsqueda híbrida (usa OpenAI)</button>
-            </div>
-
-            <div id="hybridPanel" class="contexto" hidden>
-              <h3 id="hybridTitle">Búsqueda híbrida</h3>
-              <p id="hybridSummary"></p>
-              <details class="desplegable"><summary id="hybridDetailsLabel">Ver qué se envía</summary><p id="hybridQuestion"></p><div id="scope" class="alcance"></div></details>
-              <div class="botonera">
-                <button id="indexButton" type="button" class="boton-principal">Autorizar y buscar</button>
-                <button id="cancelIndex" type="button" class="boton-texto">Cancelar</button>
-              </div>
-            </div>
-
-            <div id="noModelPanel" class="aviso" hidden>
-              <strong>Ya viste la primera mitad de RAG</strong>
-              <p>Esta demo está en modo solo búsqueda: no tiene una clave de OpenAI configurada. Los fragmentos que encontró la búsqueda son los que recibiría el modelo para responder. Para ver la respuesta con citas, corré el proyecto con tu propia clave.</p>
-              <a href="https://github.com/NicolasIgles/codebase-explorer-rag#probar-en-local" target="_blank" rel="noopener noreferrer">Cómo correrlo en tu máquina</a>
-            </div>
-
-            <div id="sendPanel" class="contexto" hidden>
-              <h3 id="contextTitle">Esto es lo que recibirá el modelo</h3>
-              <div class="paquete">
-                <div class="paquete-fila">
-                  <span class="paquete-rotulo">Tu pregunta</span>
-                  <p id="contextQuestion" class="paquete-pregunta"></p>
-                </div>
-                <div class="paquete-fila">
-                  <span id="contextCount" class="paquete-rotulo">Fragmentos</span>
-                  <div id="contextChips" class="paquete-fragmentos"></div>
-                </div>
-                <p id="contextSize" class="paquete-tamano"></p>
-              </div>
-              <details id="sendDetails" class="desplegable">
-                <summary>Ver la pregunta y los fragmentos tal cual se envían</summary>
-                <div id="sendPreview" class="contexto-texto" tabindex="0" aria-label="Pregunta y fragmentos que se envían al modelo"></div>
-              </details>
-              <details class="desplegable">
-                <summary>Ver las instrucciones fijas que acompañan cada consulta</summary>
-                <div id="instructionsPreview" class="contexto-texto" tabindex="0" aria-label="Instrucciones fijas para el modelo"></div>
-              </details>
-              <p id="contextNote" class="contexto-nota">Nada sale de este servidor hasta que tocás el botón.</p>
-              <button id="answerButton" type="button" class="boton-principal">Enviar a OpenAI y responder</button>
-            </div>
-
-            <div id="translatePanel" class="contexto" hidden>
-              <h3>Probar con la pregunta en inglés</h3>
-              <p>El código del proyecto está escrito en inglés, así que una pregunta en castellano puede no compartir palabras con él. Podés traducirla con OpenAI y buscar de nuevo. Solo se envía tu pregunta, ningún archivo.</p>
-              <details class="desplegable"><summary>Ver lo que se envía</summary><pre id="translatePreview" class="contexto-texto" tabindex="0" aria-label="Pregunta que se envía para traducir"></pre></details>
-              <button id="translateButton" type="button" class="boton-secundario">Traducir la pregunta y buscar de nuevo</button>
-            </div>
-          </section>
-
-          <section class="hallazgos" aria-labelledby="sourcesTitle">
-            <h2 id="sourcesTitle">Lo que encontró la búsqueda <span id="resultCount"></span></h2>
-            <div id="sources" class="fragmentos"></div>
-          </section>
-
+          </div>
+          <div class="carriles">
+            <section id="lane-acotado" class="carril" data-mode="acotado" data-visible="true" aria-labelledby="lane-acotado-title"></section>
+            <section id="lane-completo" class="carril" data-mode="completo" data-visible="false" aria-labelledby="lane-completo-title"></section>
+          </div>
           <p id="resultFoot" class="pie-resultado"></p>
         </div>
       </div>
