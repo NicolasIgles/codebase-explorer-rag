@@ -418,16 +418,14 @@ function showContext() {
   };
   addRow("Pregunta", session.question);
   session.sources.forEach((source, index) => addRow("Fragmento " + (index + 1), source.ruta + ", " + placeOf(source), true));
-  addRow("Instrucción", "Responder solo con estos fragmentos e indicar cuáles usó. Si no alcanzan, no responder.");
 
   /* Mismo formato que preparar_consulta y las instrucciones de validar_evidencia.py. */
   const blocks = session.sources.map((source, index) => {
     const name = [source.contenedor, source.simbolo].filter(Boolean).join(".");
     return "[" + (index + 1) + "] " + serverPlace(source) + " (" + name + ")\n" + (source.codigo || "");
   });
-  ui.sendPreview.textContent =
-    "Instrucciones para el modelo:\n" + MODEL_INSTRUCTIONS +
-    "\n\nConsulta:\nPregunta: " + session.question + "\n\nFuentes:\n" + blocks.join("\n\n");
+  ui.sendPreview.textContent = "Pregunta: " + session.question + "\n\nFuentes:\n" + blocks.join("\n\n");
+  $("instructionsPreview").textContent = MODEL_INSTRUCTIONS;
 }
 
 const MODEL_INSTRUCTIONS =

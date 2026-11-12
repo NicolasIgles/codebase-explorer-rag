@@ -127,8 +127,12 @@
               <h3 id="contextTitle">Esto es lo que recibirá el modelo</h3>
               <ul id="contextList" class="contexto-lista"></ul>
               <details id="sendDetails" class="desplegable">
-                <summary>Ver el texto tal cual se envía</summary>
-                <div id="sendPreview" class="contexto-texto" tabindex="0" aria-label="Texto que se envía al modelo"></div>
+                <summary>Ver la pregunta y los fragmentos tal cual se envían</summary>
+                <div id="sendPreview" class="contexto-texto" tabindex="0" aria-label="Pregunta y fragmentos que se envían al modelo"></div>
+              </details>
+              <details class="desplegable">
+                <summary>Ver las instrucciones fijas que acompañan cada consulta</summary>
+                <div id="instructionsPreview" class="contexto-texto" tabindex="0" aria-label="Instrucciones fijas para el modelo"></div>
               </details>
               <p id="contextNote" class="contexto-nota">Nada sale de este servidor hasta que tocás el botón.</p>
               <button id="answerButton" type="button" class="boton-principal">Enviar a OpenAI y responder</button>
