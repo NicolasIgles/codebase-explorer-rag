@@ -6,3 +6,4 @@ index_ejemplo/*.tmp
 eval_heldout/index/
 docs/README_historico.md
 prueba_openai.py
+.DS_Store

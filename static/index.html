@@ -2,208 +2,433 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light">
-  <title>Codebase Explorer — evidencia antes que respuesta</title>
-  <meta name="description" content="Entendé por qué usar RAG, compará búsqueda léxica, semántica e híbrida y explorá respuestas con fuentes de un proyecto de ejemplo.">
-  <link rel="stylesheet" href="/assets/styles.css?v=f787ac1">
-  <script defer src="/assets/app.js?v=b4b534f"></script>
+  <meta name="theme-color" content="#121A30">
+  <title>Codebase Explorer: preguntale a un proyecto de código</title>
+  <meta name="description" content="Un laboratorio de RAG: hacé una pregunta sobre un proyecto de código, mirá qué fragmentos encuentra la búsqueda y cómo el modelo responde citándolos.">
+  <link rel="preload" href="/assets/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/atkinson-hyperlegible-next-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/styles.css?v=6">
+  <script defer src="/assets/app.js?v=6"></script>
 </head>
 <body>
-  <a class="skip-link" href="#laboratorio">Ir a la consulta</a>
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="Codebase Explorer, inicio">
-      <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-      <span>codebase<span class="brand-light">/explorer</span></span>
-    </a>
-    <nav aria-label="Navegación principal">
-      <a href="#laboratorio">Probar ejemplo</a>
-      <a href="#por-que-rag">Qué es RAG</a>
-      <a href="#resultados">Resultados</a>
-      <a href="#metodo">Cómo funciona</a>
-      <a href="#privacidad">Privacidad</a>
-    </nav>
-    <span id="apiState" class="api-pill">Conectando</span>
-  </header>
+  <a class="skip-link" href="#question">Ir a la pregunta</a>
 
-  <main>
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="eyebrow-line"></span> Laboratorio RAG · ejemplo abierto</p>
-        <h1 id="hero-title">Una respuesta vale más cuando podés <em>seguir sus fuentes.</em></h1>
-        <p class="hero-lead">Un modelo puede responder con soltura sin conocer tu proyecto. Este laboratorio muestra cómo RAG busca evidencia en el código antes de generar una respuesta y te deja comprobar de dónde salió.</p>
-        <div class="hero-actions">
-          <a class="primary-link" href="#laboratorio">Explorar el ejemplo <span aria-hidden="true">↗</span></a>
-          <a class="hero-explain" href="#por-que-rag">Entender por qué usar RAG ↓</a>
-        </div>
+  <div class="app">
+    <!-- Columna lateral: el proyecto que se consulta y sus archivos -->
+    <aside id="sidebar" class="lateral" aria-label="Proyecto y archivos">
+      <div class="lateral-cabeza">
+        <a class="marca" href="/">
+          <svg class="marca-icono" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="2" y="12" width="18" height="6" rx="2" class="marca-trazo"/><path d="M5 5h12M5 9h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          codebase explorer
+        </a>
+        <button id="closeSidebar" type="button" class="lateral-cerrar" aria-label="Cerrar el panel del proyecto">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14"/></svg>
+        </button>
       </div>
-      <div class="hero-panel" aria-label="Vista previa de una fuente de código">
-        <div class="panel-top"><span class="panel-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>permissions.py · líneas 4–6</span><span class="panel-type">PY</span></div>
-        <div class="code-preview"><span class="line-number">04</span><span><b>def</b> <strong>can_edit_task</strong>(user, task):</span></div>
-        <div class="code-preview"><span class="line-number">05</span><span>    <i>"""Comprueba si el usuario puede editar la tarea por ser responsable o administrador."""</i></span></div>
-        <div class="code-preview"><span class="line-number">06</span><span>    <b>return</b> user.get(<em>"role"</em>) == <em>"admin"</em> <b>or</b> task.get(<em>"owner_id"</em>) == user.get(<em>"id"</em>)</span></div>
-        <div class="panel-callout"><span class="pulse-dot"></span> Fuente recuperada <span class="panel-arrow">↗</span></div>
-      </div>
-    </section>
 
-    <section class="rag-explainer" id="por-que-rag" aria-labelledby="rag-explainer-title">
-      <div class="rag-explainer-head">
-        <p class="eyebrow">01 / El problema</p>
-        <h2 id="rag-explainer-title">El modelo no conoce <em>todo tu contexto.</em></h2>
-        <p>Su conocimiento de entrenamiento llega hasta un período determinado. Además, puede no incluir cambios recientes ni documentación privada de tu proyecto. Si le pedís un dato específico sin darle fuentes, puede contestar con seguridad y equivocarse.</p>
-      </div>
-      <div class="rag-explainer-flow" aria-label="Cómo funciona RAG">
-        <div><span>01 / PREGUNTA</span><strong>¿Quién puede editar una tarea?</strong><p>Una duda concreta sobre este proyecto.</p></div>
-        <div><span>02 / RECUPERAR</span><strong>Buscar fragmentos relevantes</strong><p>Se consultan el código y los documentos disponibles para esta pregunta.</p></div>
-        <div><span>03 / RESPONDER</span><strong>Explicar y citar</strong><p>El modelo recibe esos fragmentos como contexto y puede señalar los archivos usados.</p></div>
-      </div>
-      <p class="rag-explainer-foot">Eso es RAG: <strong>generación aumentada con recuperación</strong>. La búsqueda aporta contexto en cada consulta; no reentrena al modelo ni garantiza que la respuesta sea correcta. Por eso mostramos las fuentes y también cuándo conviene abstenerse.</p>
-    </section>
+      <button id="newChat" type="button" class="nueva">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 3v12M3 9h12"/></svg>
+        Nueva conversación
+      </button>
 
-    <section class="results-showcase" id="resultados" aria-labelledby="results-title">
-      <div class="results-intro">
-        <p class="eyebrow">02 / Evaluación</p>
-        <div class="results-intro-grid">
-          <h2 id="results-title">Tres formas de buscar.<br><em>Resultados a la vista.</em></h2>
-          <div class="results-intro-copy">
-            <p>Comparamos la búsqueda local, la búsqueda con embeddings de OpenAI y la combinación de ambas sobre el mismo proyecto sintético.</p>
-            <a href="#comparativa" class="results-jump">Explorar resultados <span aria-hidden="true">↗</span></a>
+      <div class="lateral-scroll">
+        <section class="lateral-bloque" aria-labelledby="originTitle">
+          <h2 id="originTitle" class="lateral-titulo">Qué querés consultar</h2>
+          <div class="origen" role="group" aria-labelledby="originTitle">
+            <button id="useExample" type="button" class="origen-boton" aria-pressed="true">
+              <svg class="origen-icono" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 5.5A1.5 1.5 0 0 1 4.5 4H8l1.5 2h6A1.5 1.5 0 0 1 17 7.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5z"/></svg>
+              <span class="origen-texto">
+                <span class="origen-nombre">Proyecto de ejemplo</span>
+                <span class="origen-detalle">Un gestor de tareas ficticio en Python, con documentos</span>
+              </span>
+            </button>
+            <button id="useUpload" type="button" class="origen-boton" aria-pressed="false">
+              <svg class="origen-icono" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 3H6a1.5 1.5 0 0 0-1.5 1.5v11A1.5 1.5 0 0 0 6 17h8a1.5 1.5 0 0 0 1.5-1.5V7z"/><path d="M11.5 3v4h4"/></svg>
+              <span class="origen-texto">
+                <span class="origen-nombre">Mis archivos</span>
+                <span class="origen-detalle">Código, Markdown, TXT o PDF</span>
+              </span>
+            </button>
           </div>
-        </div>
-        <div class="results-sample"><strong>7</strong><span>preguntas respondibles</span><strong>2</strong><span>preguntas sin respuesta</span><span class="results-sample-note">Muestra pequeña · conjunto ya revisado durante el desarrollo</span></div>
-      </div>
-      <div class="results-body" id="comparativa">
-        <div class="results-lead">
-          <div><p class="eyebrow">Recuperación de fuentes</p><h3>¿Qué cambia entre modos?</h3></div>
-          <p>Empezá por la cobertura: muestra una diferencia real entre modos. Cambiá de métrica para ver dónde empatan y qué pasa cuando no hay respuesta.</p>
-        </div>
-        <div class="metric-switch" role="group" aria-label="Métrica del gráfico">
-          <button type="button" class="metric-choice is-active" data-metric="coverage" aria-pressed="true">Todas las fuentes</button>
-          <button type="button" class="metric-choice" data-metric="first" aria-pressed="false">Primera fuente</button>
-          <button type="button" class="metric-choice" data-metric="negative" aria-pressed="false">Sin fuentes en negativas</button>
-        </div>
-        <div class="benchmark-frame">
-          <div class="benchmark-heading"><div><span class="benchmark-kicker">COMPARATIVA / HOLDOUT</span><h4 id="benchmarkTitle">Todas las fuentes esperadas entre cinco</h4></div><span id="benchmarkDenominator">7 casos respondibles</span></div>
-          <div id="benchmarkChart" class="benchmark-chart" aria-live="polite"></div>
-          <p id="benchmarkNote" class="benchmark-note">En cada una de las 7 preguntas respondibles, ¿aparecieron todas las fuentes esperadas entre los cinco primeros resultados?</p>
-        </div>
-        <aside class="results-reading" aria-labelledby="results-reading-title">
-          <span class="results-reading-index">UN CASO DETRÁS DE LAS BARRAS</span>
-          <h4 id="results-reading-title">“¿Qué día se revisan los lotes activos?”</h4>
-          <p>La respuesta necesitaba dos documentos. La búsqueda léxica encontró uno y omitió <code>docs/operacion.txt</code> entre los cinco primeros. La semántica encontró ambos en los puestos 1 y 2; la híbrida, en los puestos 1 y 4. Por eso las dos últimas empatan en cobertura, aunque no ordenan igual las fuentes.</p>
-        </aside>
-        <div class="mode-grid" aria-label="Cómo funciona cada modo">
-          <article class="mode-result mode-result-local"><span class="mode-result-index">01 / LOCAL</span><h4>Búsqueda léxica</h4><p>Ordena coincidencias en este servidor. No crea embeddings ni envía contenido a OpenAI.</p><strong>5/7 <small>cobertura de todas las fuentes</small></strong></article>
-          <article class="mode-result mode-result-semantic"><span class="mode-result-index">02 / OPENAI</span><h4>Embeddings</h4><p>Usa <code>text-embedding-3-small</code> para comparar la pregunta con los fragmentos autorizados.</p><strong>7/7 <small>cobertura de todas las fuentes</small></strong></article>
-          <article class="mode-result mode-result-hybrid"><span class="mode-result-index">03 / COMBINADO</span><h4>Búsqueda híbrida</h4><p>Combina el orden léxico y el semántico. En esta medición igualó la cobertura del modo semántico.</p><strong>7/7 <small>cobertura de todas las fuentes</small></strong></article>
-        </div>
-        <p class="results-timing">Tiempo medido en este conjunto: búsqueda léxica, 0,94 ms de media. La evaluación calculó búsqueda semántica e híbrida juntas en una misma llamada (609,07 ms de media); no hay dos mediciones independientes para comparar su latencia.</p>
-        <div class="results-detail">
-          <div><p class="eyebrow">Respuesta con evidencia</p><h3>Buscar fuentes y responder son pasos distintos.</h3></div>
-          <div><p>El gráfico mide qué recupera el buscador, no si la respuesta final es correcta. En una evaluación separada de los modos léxico e híbrido, <code>gpt-6-luna</code> respondió 6 de 7 preguntas positivas con una cita esperada y se abstuvo en las 2 negativas. No se evaluaron respuestas para el modo semántico.</p><p>La búsqueda híbrida y la generación requieren autorizaciones distintas en el laboratorio. Una cita válida no demuestra por sí sola que toda la respuesta sea correcta.</p></div>
-        </div>
-        <p class="results-source">Fuente: <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/evaluacion_holdout.json" target="_blank" rel="noopener noreferrer">evaluacion_holdout.json</a> · <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/docs/correccion_evaluacion.md" target="_blank" rel="noopener noreferrer">corrección de etiquetas y límites</a>. Estos resultados describen 9 preguntas de un proyecto sintético; no estiman precisión en repositorios reales.</p>
-      </div>
-    </section>
+        </section>
 
-    <section class="workspace-wrap" id="laboratorio" aria-labelledby="lab-title">
-      <div class="section-heading">
-        <div><p class="eyebrow">03 / Probar</p><h2 id="lab-title">Consultá el ejemplo</h2></div>
-        <p>El ejemplo combina archivos Python y documentación. Cada consulta muestra los fragmentos utilizados.</p>
+        <section id="uploadPanel" class="lateral-bloque carga" aria-labelledby="uploadTitle" hidden>
+          <h2 id="uploadTitle" class="lateral-titulo">Tus archivos</h2>
+          <input id="uploadFiles" class="archivo-oculto" type="file" multiple accept=".py,.js,.jsx,.ts,.tsx,.mjs,.cjs,.md,.markdown,.txt,.pdf" aria-describedby="dropHelp">
+          <label id="dropZone" class="zona" for="uploadFiles">
+            <svg class="zona-icono" width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 18V5M8.5 10.5L14 5l5.5 5.5"/><path d="M5 17v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"/></svg>
+            <span class="zona-titulo">Elegir archivos</span>
+            <span id="dropHelp" class="zona-detalle">o arrastralos acá. Hasta cinco, de 10 MB como máximo cada uno.</span>
+          </label>
+          <ul id="fileList" class="archivos" aria-label="Archivos elegidos"></ul>
+          <p id="uploadSummary" class="carga-resumen" aria-live="polite">Todavía no elegiste archivos.</p>
+          <button id="deleteUpload" type="button" class="boton-lateral" hidden>Borrar mis archivos del servidor</button>
+          <p class="carga-nota">Se suben cuando hacés la primera pregunta. No se ejecutan y se borran del servidor en menos de 24 horas.</p>
+        </section>
+
+        <section id="touchedWrap" class="lateral-bloque" aria-labelledby="touchedTitle" hidden>
+          <h2 id="touchedTitle" class="lateral-titulo">Archivos de la última búsqueda</h2>
+          <ul id="touchedFiles" class="tocados"></ul>
+          <p id="touchedNote" class="tocados-nota" hidden>Resaltados, los que citó la respuesta.</p>
+        </section>
       </div>
 
-      <div class="collection-switch" role="group" aria-label="Colección para consultar">
-        <button id="useExample" type="button" class="collection-choice active" aria-pressed="true">Probar el ejemplo</button>
-        <button id="useUpload" type="button" class="collection-choice" aria-pressed="false">Cargar mis archivos</button>
-      </div>
-      <div id="uploadPanel" class="upload-panel" hidden>
-        <div><h3>Una colección temporal para tus archivos</h3><p>Elegí hasta cinco archivos de código, Markdown, TXT o PDF, de 10 MB como máximo cada uno. Llegan a este servidor al buscar fuentes. Se borran como máximo a las 24 horas y podés eliminarlos antes. En el alojamiento gratuito, la colección también desaparece si el servicio se duerme o reinicia tras un período sin actividad. No ejecutamos el código cargado.</p></div>
-        <label class="input-label" for="uploadFiles">Archivos</label>
-        <input id="uploadFiles" type="file" multiple accept=".py,.js,.jsx,.ts,.tsx,.mjs,.cjs,.md,.markdown,.txt,.pdf">
-        <div id="uploadSummary" class="upload-summary">No hay archivos seleccionados.</div>
-        <button id="deleteUpload" type="button" class="secondary-button" hidden>Eliminar mi colección</button>
-      </div>
-      <div class="workspace">
-        <div class="query-panel">
-          <div class="query-header"><span class="step-number">01</span><div><h3>Hacé una pregunta</h3><p>Primero buscamos fuentes en este servidor. Vos decidís después si querés usar OpenAI.</p></div></div>
-          <div id="suggestions" class="suggestions" aria-label="Preguntas sugeridas"></div>
-          <label class="input-label" for="question">Tu pregunta</label>
-          <textarea id="question" rows="4" maxlength="500" placeholder="Ej.: ¿Quién puede editar una tarea?"></textarea>
-          <div class="input-footer"><span id="collectionHint">El ejemplo es ficticio y no contiene datos personales.</span><span id="counter">0 / 500</span></div>
-          <button id="searchButton" class="action-button" type="button">Buscar fuentes <span aria-hidden="true">↗</span></button>
-          <p id="formHint" class="form-hint">Usá Ctrl + Enter para buscar.</p>
-          <p class="form-hint">La búsqueda local no consume cupo. Para probar las funciones con OpenAI, hay hasta 5 envíos por visitante en una hora.</p>
+      <div class="lateral-pie">
+        <p id="apiState" class="modo-demo">Conectando con el servidor…</p>
+        <div id="consentNote" class="permiso-sesion" hidden>
+          <p>En esta sesión ya autorizaste enviar tus preguntas y los fragmentos a OpenAI.</p>
+          <button id="revokeConsent" type="button" class="boton-lateral">Confirmar cada envío</button>
         </div>
+        <button id="openGuide" type="button" class="enlace-lateral">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="7"/><path d="M7 7a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9V11M9 13.5v.01"/></svg>
+          Cómo funciona RAG
+        </button>
+        <a class="enlace-lateral" href="https://github.com/NicolasIgles/codebase-explorer-rag" target="_blank" rel="noopener noreferrer">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 5L2 9l4 4M12 5l4 4-4 4"/></svg>
+          Código en GitHub
+        </a>
+      </div>
+    </aside>
+    <div id="scrim" class="velo" hidden></div>
 
-        <div class="results-panel" aria-live="polite">
-          <div class="result-header"><span class="step-number">02</span><div><h3>Resultado</h3><p>La respuesta aparece acá; las fuentes quedan debajo para revisarlas.</p></div></div>
-          <div id="emptyState" class="empty-state">
-            <div class="empty-graphic" aria-hidden="true"><span>01</span><span>02</span><span>03</span></div>
-            <h4>Las fuentes aparecerán acá</h4>
-            <p>Elegí una pregunta del ejemplo o escribí la tuya para empezar.</p>
-          </div>
-          <div id="status" class="status-message" role="status" hidden></div>
-          <div id="results" hidden>
-            <section id="answerStage" class="answer-stage" tabindex="-1" aria-label="Respuesta y próximos pasos">
-              <p id="resultSummary" class="result-summary"></p>
-              <div id="answer" class="answer-card" hidden></div>
-              <div id="sendPanel" class="decision-panel" hidden>
-                <p id="sendSummary"></p>
-                <details id="sendDetails" class="send-details"><summary>Ver la pregunta y los fragmentos que se enviarán</summary><div id="sendPreview" class="send-preview"></div></details>
-                <button id="answerButton" type="button" class="action-button">Enviar y generar respuesta <span aria-hidden="true">↗</span></button>
+    <!-- Columna principal: la conversación -->
+    <main class="chat" id="main">
+      <header class="chat-cabeza">
+        <button id="menuButton" type="button" class="menu-boton" aria-expanded="false" aria-controls="sidebar">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h14M3 10h14M3 14h9"/></svg>
+          <span class="sr-only">Abrir el panel del proyecto</span>
+        </button>
+        <div class="chat-titulo">
+          <p id="projectName" class="chat-proyecto">Proyecto de ejemplo</p>
+          <p id="collectionHint" class="chat-ayuda">Un gestor de tareas ficticio, con código Python y documentos de texto.</p>
+        </div>
+        <button id="openGuideTop" type="button" class="boton-guia">Cómo funciona</button>
+      </header>
+
+      <div id="thread" class="hilo">
+        <div class="hilo-ancho">
+          <section id="welcome" class="bienvenida" aria-labelledby="hero-title">
+            <h1 id="hero-title">Preguntale a un proyecto de código y mirá de dónde sale la respuesta</h1>
+            <p class="bajada">Esto es RAG. Primero se buscan los fragmentos del proyecto que hablan de tu pregunta. Después el modelo responde usando solo esos fragmentos y cita cada uno, para que puedas comprobarlo.</p>
+
+            <figure class="muestra">
+              <p class="muestra-proceso"><span class="muestra-check" aria-hidden="true"></span>Usó 1 de los 2 fragmentos que encontró</p>
+              <p class="muestra-respuesta">Solo el responsable de la tarea o un administrador pueden editarla. <span class="muestra-cita">permissions.py 4–6</span></p>
+              <div class="muestra-codigo" aria-hidden="true">
+                <div class="linea"><span class="ln">4</span><span class="lc">def can_edit_task(user, task):</span></div>
+                <div class="linea"><span class="ln">5</span><span class="lc">    """Responsable o administrador."""</span></div>
+                <div class="linea"><span class="ln">6</span><span class="lc">    return user.get("role") == "admin" or task.get("owner_id") == user.get("id")</span></div>
               </div>
-              <div id="translatePanel" class="decision-panel" hidden>
-                <p>Podés ampliar la búsqueda traduciendo solo tu pregunta con OpenAI. No se envían archivos ni fragmentos en este paso.</p>
-                <details class="send-details"><summary>Ver la pregunta que se enviará</summary><pre id="translatePreview"></pre></details>
-                <button id="translateButton" type="button" class="secondary-button">Enviar pregunta para traducir</button>
-              </div>
-            </section>
-            <div id="hybridArea" class="hybrid-area" hidden>
-              <button id="hybridButton" type="button" class="secondary-button">Mejorar búsqueda con IA</button>
-              <div id="hybridPanel" class="decision-panel" hidden>
-                <h4 id="hybridTitle">Búsqueda híbrida</h4>
-                <p id="hybridSummary"></p>
-                <details class="send-details"><summary id="hybridDetailsLabel">Ver el alcance de la búsqueda</summary><p id="hybridQuestion"></p><div id="scope" class="scope-panel"></div></details>
-                <button id="indexButton" type="button" class="action-button">Autorizar y buscar con IA <span aria-hidden="true">↗</span></button>
-                <button id="cancelIndex" type="button" class="text-button">Cancelar</button>
+              <figcaption class="muestra-pie">Así se ve una respuesta: cada cita abre las líneas resaltadas que la sostienen.</figcaption>
+            </figure>
+
+            <div id="suggestionsWrap" class="sugerencias">
+              <p id="suggestionsLabel" class="sugerencias-etiqueta">Empezá con una de estas preguntas</p>
+              <div id="suggestions" class="sugerencias-lista" role="group" aria-labelledby="suggestionsLabel"></div>
+            </div>
+            <div id="uploadHint" class="bienvenida-carga" hidden>
+              <p>Elegí tus archivos en la columna de la izquierda y después escribí tu pregunta abajo. La búsqueda se hace en este servidor y nada se envía a OpenAI sin que lo autorices.</p>
+              <label class="boton-secundario" for="uploadFiles">Elegir archivos</label>
+            </div>
+          </section>
+
+          <div id="history" class="historial"></div>
+
+          <!-- El turno en curso: la pregunta, el progreso en una línea y la respuesta -->
+          <article id="turn" class="turno" aria-labelledby="turnQuestion" hidden>
+            <p id="turnQuestion" class="msg-usuario"></p>
+            <div class="msg-asistente">
+              <details id="process" class="proceso" data-state="idle">
+                <summary><span class="proceso-icono" aria-hidden="true"></span><span id="processText">Esperando la búsqueda</span></summary>
+                <ol id="stages" class="etapas" aria-label="Etapas de RAG">
+                  <li class="etapa" data-stage="recuperar" data-state="idle">
+                    <span class="etapa-marca" aria-hidden="true">
+                      <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+                      <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+                      <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+                    </span>
+                    <span class="etapa-cuerpo">
+                      <strong>Recuperar</strong>
+                      <span class="etapa-texto" data-default="Esperando la búsqueda">Esperando la búsqueda</span>
+                    </span>
+                  </li>
+                  <li class="etapa" data-stage="contexto" data-state="idle">
+                    <span class="etapa-marca" aria-hidden="true">
+                      <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+                      <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+                      <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+                    </span>
+                    <span class="etapa-cuerpo">
+                      <strong>Armar el contexto</strong>
+                      <span class="etapa-texto" data-default="Junta tu pregunta y los fragmentos encontrados">Junta tu pregunta y los fragmentos encontrados</span>
+                    </span>
+                  </li>
+                  <li class="etapa" data-stage="responder" data-state="idle">
+                    <span class="etapa-marca" aria-hidden="true">
+                      <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+                      <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+                      <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+                    </span>
+                    <span class="etapa-cuerpo">
+                      <strong>Responder con citas</strong>
+                      <span class="etapa-texto" data-default="El modelo cita cada fragmento que usa, o avisa que no hay evidencia">El modelo cita cada fragmento que usa, o avisa que no hay evidencia</span>
+                    </span>
+                  </li>
+                </ol>
+              </details>
+
+              <div id="results" class="resultados" hidden>
+                <section id="answerStage" class="respuesta" tabindex="-1" aria-labelledby="answerTitle">
+                  <h2 id="answerTitle" class="sr-only">Resultado</h2>
+                  <p id="resultSummary" class="nota-turno"></p>
+                  <div id="answer" class="respuesta-cuerpo" hidden></div>
+                  <p id="hybridNote" class="nota-turno" hidden></p>
+
+                  <div id="noModelPanel" class="aviso" hidden>
+                    <p>Esta demo no tiene una clave de OpenAI, así que llega hasta la búsqueda: los fragmentos que encontró son los que recibiría el modelo para responder.</p>
+                    <a href="https://github.com/NicolasIgles/codebase-explorer-rag#probar-en-local" target="_blank" rel="noopener noreferrer">Cómo correrlo con tu clave</a>
+                  </div>
+
+                  <div id="sendPanel" class="permiso" hidden>
+                    <p id="contextTitle" class="permiso-texto">Para responder, se envían a OpenAI tu pregunta y los fragmentos encontrados.</p>
+                    <p id="contextNote" class="contexto-nota">Nada sale de este servidor hasta que tocás el botón. Te lo pregunto solo esta vez: en el resto de la sesión, las respuestas se envían sin confirmar.</p>
+                    <div class="botonera">
+                      <button id="answerButton" type="button" class="boton-principal">Enviar a OpenAI y responder</button>
+                      <button id="showContext" type="button" class="boton-texto">Ver qué se envía</button>
+                    </div>
+                  </div>
+
+                  <div id="hybridPanel" class="permiso" hidden>
+                    <p class="permiso-texto"><strong id="hybridTitle">Búsqueda híbrida</strong></p>
+                    <p id="hybridSummary"></p>
+                    <details class="desplegable"><summary id="hybridDetailsLabel">Ver qué se envía</summary><p id="hybridQuestion"></p><div id="scope" class="alcance"></div></details>
+                    <div class="botonera">
+                      <button id="indexButton" type="button" class="boton-principal">Autorizar y buscar</button>
+                      <button id="cancelIndex" type="button" class="boton-texto">Cancelar</button>
+                    </div>
+                  </div>
+
+                  <div id="translatePanel" class="permiso" hidden>
+                    <p class="permiso-texto">El código del proyecto está en inglés y tu pregunta no comparte palabras con él. Puedo traducirla con OpenAI y buscar de nuevo. Solo se envía tu pregunta, ningún archivo.</p>
+                    <pre id="translatePreview" hidden></pre>
+                    <div class="botonera">
+                      <button id="translateButton" type="button" class="boton-secundario">Traducir y buscar de nuevo</button>
+                    </div>
+                  </div>
+
+                  <div class="acciones-turno">
+                    <button id="sourcesButton" type="button" class="accion accion-evidencia" aria-controls="evidence" aria-expanded="false" hidden>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M9.5 2.5v11"/></svg>
+                      <span id="sourcesButtonLabel">Ver la evidencia</span>
+                    </button>
+                    <button id="hybridButton" type="button" class="accion" hidden>Comparar con la búsqueda híbrida</button>
+                  </div>
+                </section>
               </div>
             </div>
-            <details id="sourcesSection" class="sources-section">
-              <summary>Fuentes encontradas <span id="resultCount"></span></summary>
-              <div id="sources" class="sources"></div>
-            </details>
-            <div id="resultFoot" class="result-foot"></div>
-          </div>
+          </article>
         </div>
       </div>
-    </section>
 
-    <section class="method-section" id="metodo" aria-labelledby="method-title">
-      <div class="section-heading"><div><p class="eyebrow">04 / Entender</p><h2 id="method-title">Del archivo a la respuesta</h2></div><p>El recorrido deja a la vista dónde termina la búsqueda y dónde empieza la interpretación del modelo.</p></div>
-      <div class="method-grid">
-        <article><span class="method-index">01 — PREPARAR</span><h3>Fragmentos con ubicación</h3><p>El servidor separa funciones, secciones y páginas. Conserva la ruta y las líneas o la página para que puedas revisar el origen.</p></article>
-        <article><span class="method-index">02 — RECUPERAR</span><h3>Fuentes antes de responder</h3><p>La búsqueda local ordena coincidencias. La híbrida suma embeddings cuando el índice está preparado y hay autorización.</p></article>
-        <article><span class="method-index">03 — DECIDIR</span><h3>Respuesta o abstención</h3><p>Si pedís una respuesta, el modelo recibe las fuentes mostradas. Puede responder con citas válidas o declarar que no hay evidencia suficiente.</p></article>
+      <form id="queryForm" class="compositor" novalidate>
+        <div class="hilo-ancho">
+          <p id="status" class="estado" role="status" tabindex="-1" hidden></p>
+          <p id="announcer" class="sr-only" aria-live="polite"></p>
+          <div class="compositor-caja">
+            <label id="questionLabel" for="question" class="sr-only">Tu pregunta sobre el proyecto de ejemplo</label>
+            <textarea id="question" rows="1" maxlength="500" autocomplete="off" aria-describedby="composerHelp counter" placeholder="Escribí tu pregunta"></textarea>
+            <button id="searchButton" class="boton-enviar" type="submit">
+              <span id="searchLabel">Buscar</span>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="M12 12l3.5 3.5"/></svg>
+            </button>
+          </div>
+          <div class="compositor-pie">
+            <p id="composerHelp" class="compositor-ayuda">Enter busca y Mayús + Enter agrega una línea. La búsqueda por palabras no sale de este servidor.</p>
+            <p id="counter" class="contador" hidden></p>
+          </div>
+        </div>
+      </form>
+    </main>
+
+    <!-- Panel de evidencia: todo el detalle de la búsqueda, fuera del chat -->
+    <aside id="evidence" class="evidencia" aria-labelledby="evidenceTitle" hidden>
+      <div class="evidencia-cabeza">
+        <div>
+          <h2 id="evidenceTitle" tabindex="-1">Evidencia</h2>
+          <p id="evidenceSub" class="evidencia-sub">De tu última pregunta</p>
+        </div>
+        <button id="closeEvidence" type="button" class="dialogo-cerrar" aria-label="Cerrar la evidencia">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14"/></svg>
+        </button>
       </div>
-    </section>
+      <div id="evidenceBody" class="evidencia-cuerpo">
+        <div id="evidenceLive" class="evidencia-vista">
+          <div id="modeRow" class="modo" hidden>
+            <span id="modeTag" class="modo-etiqueta" data-mode="acotado">Búsqueda por palabras</span>
+          </div>
 
-    <section class="privacy-section" id="privacidad" aria-labelledby="privacy-title">
-      <div><p class="eyebrow">05 / Privacidad</p><h2 id="privacy-title">Sabé qué sale del servidor.</h2></div>
-      <div class="privacy-copy"><p>La búsqueda inicial se queda en este servidor. Antes de generar una respuesta, podés revisar la pregunta y los fragmentos que se enviarán a OpenAI. La búsqueda híbrida pide una autorización aparte y muestra el alcance de la colección.</p><p>El ejemplo es público y ficticio. Una cita indica qué fuente se consultó; revisá su contenido antes de tomar la respuesta como cierta.</p></div>
-    </section>
-  </main>
+          <div id="comparison" class="comparacion" hidden>
+            <h3 id="comparisonTitle" tabindex="-1">Qué cambió con la búsqueda híbrida</h3>
+            <p id="comparisonSummary" class="comparacion-resumen"></p>
+            <div class="tabla-envoltura" tabindex="0" role="region" aria-labelledby="comparisonTitle">
+              <table class="comparacion-tabla">
+                <caption class="sr-only">Posición de cada fragmento en la búsqueda por palabras y en la híbrida</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Fragmento</th>
+                    <th scope="col" class="col-modo" data-mode="acotado">Por palabras</th>
+                    <th scope="col" class="col-modo" data-mode="completo">Híbrida</th>
+                  </tr>
+                </thead>
+                <tbody id="comparisonRows"></tbody>
+              </table>
+            </div>
+            <p class="comparacion-nota">El número es la posición en cada búsqueda: 1 es el fragmento más parecido a tu pregunta. Solo los cinco primeros llegan al modelo. Para responder se usan los de la búsqueda híbrida.</p>
+            <button id="backToLexical" type="button" class="boton-texto">Volver a la búsqueda por palabras</button>
+          </div>
 
-  <footer><span>codebase/explorer · laboratorio RAG</span><span>Proyecto de demostración · fuentes inspeccionables</span></footer>
+          <section class="hallazgos" aria-labelledby="sourcesTitle">
+            <h3 id="sourcesTitle" class="hallazgos-titulo">Lo que encontró la búsqueda <span id="resultCount"></span></h3>
+            <div id="sources" class="fragmentos"></div>
+          </section>
 
-  <div id="sourceDialog" class="rag-overlay" hidden>
-    <section class="rag-panel rag-source" role="dialog" aria-modal="true" aria-labelledby="sourceTitle" aria-describedby="sourceLocation">
-      <button id="closeSourceTop" type="button" class="rag-close" aria-label="Cerrar">×</button>
-      <p id="sourceKind" class="eyebrow">Fuente</p>
-      <h2 id="sourceTitle">Fragmento</h2>
-      <p id="sourceLocation" class="source-location"></p>
-      <pre id="sourceCode"></pre>
-      <button id="closeSource" type="button" class="secondary-button">Volver a resultados</button>
-    </section>
+          <section id="contextSection" class="contexto-panel" aria-labelledby="contextHeading" hidden>
+            <h3 id="contextHeading" class="hallazgos-titulo">Qué recibe el modelo</h3>
+            <div class="paquete">
+              <div class="paquete-fila">
+                <span class="paquete-rotulo">Tu pregunta</span>
+                <p id="contextQuestion" class="paquete-pregunta"></p>
+              </div>
+              <div class="paquete-fila">
+                <span id="contextCount" class="paquete-rotulo">Fragmentos</span>
+                <div id="contextChips" class="paquete-fragmentos"></div>
+              </div>
+              <p id="contextSize" class="paquete-tamano"></p>
+            </div>
+            <details id="sendDetails" class="desplegable">
+              <summary>Ver la pregunta y los fragmentos tal cual se envían</summary>
+              <div id="sendPreview" class="contexto-texto" tabindex="0" aria-label="Pregunta y fragmentos que se envían al modelo"></div>
+            </details>
+            <details class="desplegable">
+              <summary>Ver las instrucciones fijas que acompañan cada consulta</summary>
+              <div id="instructionsPreview" class="contexto-texto" tabindex="0" aria-label="Instrucciones fijas para el modelo"></div>
+            </details>
+          </section>
+
+          <p id="resultFoot" class="pie-resultado"></p>
+        </div>
+        <div id="evidenceArchive" class="evidencia-vista" hidden></div>
+      </div>
+    </aside>
   </div>
+
+  <!-- Guía: cómo funciona, los modos de búsqueda y qué sale del servidor -->
+  <dialog id="guideDialog" class="guia" aria-labelledby="guideTitle">
+    <div class="guia-cabeza">
+      <h2 id="guideTitle">Cómo funciona</h2>
+      <button id="closeGuide" type="button" class="dialogo-cerrar" aria-label="Cerrar la guía">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14"/></svg>
+      </button>
+    </div>
+    <nav class="guia-indice" aria-label="Secciones de la guía">
+      <a href="#etapas">Etapas</a>
+      <a href="#modos">Formas de buscar</a>
+      <a href="#privacidad">Qué sale del servidor</a>
+    </nav>
+    <div class="guia-cuerpo">
+      <section class="guia-seccion" id="etapas" aria-labelledby="etapas-title">
+        <h3 id="etapas-title">Qué pasa en cada etapa</h3>
+        <p>Un modelo de lenguaje no conoce tu proyecto: lo que sabe viene de su entrenamiento. Si le preguntás por tu código sin darle nada más, puede contestar con seguridad e inventar.</p>
+        <p>RAG funciona como un buen asistente de investigación: antes de contestar, va al archivo, trae los papeles que hacen falta y responde señalando de cuál sacó cada cosa. Si no encuentra nada, lo dice.</p>
+        <ol class="explicacion">
+          <li>
+            <h4>Recuperar</h4>
+            <p>El servidor ya separó el proyecto en fragmentos: funciones, secciones de documentos y páginas, cada uno con su archivo y sus líneas. Al preguntar, ordena esos fragmentos según cuánto se parecen a tu pregunta y se queda con los mejores.</p>
+            <p class="explicacion-nota">Con la búsqueda por palabras, nada sale del servidor.</p>
+          </li>
+          <li>
+            <h4>Armar el contexto</h4>
+            <p>Tu pregunta y los fragmentos encontrados se juntan en un solo texto, con la instrucción de responder usando solo eso. El modelo no ve el resto del proyecto: ve lo que muestra esta etapa.</p>
+            <p class="explicacion-nota">Es lo que se envía a OpenAI, y solo cuando lo autorizás.</p>
+          </li>
+          <li>
+            <h4>Responder con citas</h4>
+            <p>El modelo responde e indica qué fragmentos usó. El servidor comprueba que cada cita apunte a un fragmento que realmente recibió. Si los fragmentos no alcanzan, la respuesta correcta es no responder.</p>
+            <p class="explicacion-nota">Una cita dice de dónde salió algo, no garantiza que esté bien: revisá las líneas.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="guia-seccion" id="modos" aria-labelledby="modos-title">
+        <h3 id="modos-title">Tres formas de buscar</h3>
+        <p>La primera etapa decide todo lo demás: si la búsqueda no trae el fragmento correcto, el modelo no puede citarlo. Por eso comparamos tres maneras de buscar sobre el mismo proyecto.</p>
+        <div class="modos">
+          <article class="modo-tarjeta" data-mode="acotado">
+            <h4><span class="modo-punto"></span>Por palabras</h4>
+            <p>Busca los fragmentos que comparten palabras con tu pregunta. Es instantánea y no sale del servidor, pero se pierde lo que está escrito con otras palabras: si preguntás por «modificar» y el código dice «edit», no lo encuentra.</p>
+          </article>
+          <article class="modo-tarjeta" data-mode="semantica">
+            <h4><span class="modo-punto"></span>Por significado</h4>
+            <p>Convierte la pregunta y cada fragmento en vectores con un modelo de OpenAI (<code>text-embedding-3-small</code>) y compara qué tan cerca están en significado. Encuentra sinónimos y otros idiomas, pero necesita enviar texto a OpenAI.</p>
+          </article>
+          <article class="modo-tarjeta" data-mode="completo">
+            <h4><span class="modo-punto"></span>Híbrida</h4>
+            <p>Combina los dos órdenes: lo que coincide en palabras y lo que coincide en significado. Podés probarla en el chat, después de una búsqueda por palabras.</p>
+          </article>
+        </div>
+
+        <div class="comparativa">
+          <h4>¿Cuál encuentra mejor?</h4>
+          <div class="metricas" role="group" aria-label="Qué medir">
+            <button type="button" class="metrica" data-metric="coverage" aria-pressed="true">Todos los fragmentos necesarios</button>
+            <button type="button" class="metrica" data-metric="first" aria-pressed="false">El correcto en primer lugar</button>
+            <button type="button" class="metrica" data-metric="negative" aria-pressed="false">Nada cuando no hay respuesta</button>
+          </div>
+          <p id="benchmarkTitle" class="comparativa-pregunta" aria-live="polite"></p>
+          <div id="benchmarkChart" class="grafico"></div>
+          <p id="benchmarkNote" class="comparativa-nota"></p>
+          <details class="desplegable detalle-tecnico">
+            <summary>Detalle técnico de la evaluación</summary>
+            <div class="detalle-cuerpo">
+              <p>Son 9 preguntas sobre un proyecto sintético distinto del ejemplo (7 con respuesta y 2 sin respuesta), revisadas durante el desarrollo. Describen este conjunto, no estiman la precisión en repositorios reales.</p>
+              <p>Un caso detrás de las barras: «¿Qué día se revisan los lotes activos?» necesitaba dos documentos. La búsqueda por palabras encontró uno y dejó afuera <code>docs/operacion.txt</code>. La búsqueda por significado los puso primero y segundo; la híbrida, primero y cuarto.</p>
+              <p>Tiempo medio: 0,94 ms la búsqueda por palabras. La semántica y la híbrida se midieron juntas en una misma llamada (609,07 ms de media), así que no hay dos tiempos independientes para comparar.</p>
+              <p>Respuestas: en una evaluación aparte con los modos por palabras e híbrido, <code>gpt-6-luna</code> respondió 6 de las 7 preguntas con una cita esperada y no respondió las 2 que no tenían respuesta. No se evaluaron respuestas con el modo por significado.</p>
+              <p>Datos: <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/evaluacion_holdout.json" target="_blank" rel="noopener noreferrer">evaluacion_holdout.json</a> y <a href="https://github.com/NicolasIgles/codebase-explorer-rag/blob/main/docs/correccion_evaluacion.md" target="_blank" rel="noopener noreferrer">la corrección de etiquetas y sus límites</a>.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="guia-seccion" id="privacidad" aria-labelledby="privacidad-title">
+        <h3 id="privacidad-title">Qué sale del servidor</h3>
+        <p>La búsqueda por palabras se resuelve entera en este servidor. Cada envío a OpenAI se autoriza por separado y te muestra antes qué se envía.</p>
+        <dl class="envios">
+          <div><dt>Buscar</dt><dd>No envía nada. Ordena los fragmentos en este servidor.</dd></div>
+          <div><dt>Enviar a OpenAI y responder</dt><dd>Envía tu pregunta y los fragmentos que ves en «Esto es lo que recibirá el modelo».</dd></div>
+          <div><dt>Búsqueda híbrida</dt><dd>Con el ejemplo, solo tu pregunta cuando su índice ya está preparado; si no, también el texto del ejemplo. Con tus archivos, también el texto permitido de esos archivos, para calcular sus vectores.</dd></div>
+          <div><dt>Traducir la pregunta</dt><dd>Solo tu pregunta.</dd></div>
+        </dl>
+        <p class="limites">El ejemplo es público y ficticio. Tus archivos se borran en menos de 24 horas, o antes si el servicio gratuito se duerme o reinicia. Antes de enviar algo a OpenAI, un filtro deja afuera los archivos con nombres sensibles (como secrets, credentials o archivos ocultos) y los que parecen contener claves.</p>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog id="sourceDialog" class="dialogo" aria-labelledby="sourceTitle">
+    <div class="dialogo-cabeza">
+      <div>
+        <p id="sourceKind" class="dialogo-tipo">Fragmento</p>
+        <h2 id="sourceTitle">Fragmento</h2>
+        <p id="sourceLocation" class="dialogo-ubicacion"></p>
+      </div>
+      <button id="closeSourceTop" type="button" class="dialogo-cerrar" aria-label="Cerrar">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14"/></svg>
+      </button>
+    </div>
+    <div id="sourceCode" class="codigo codigo-dialogo" tabindex="0" aria-label="Contenido del fragmento"></div>
+    <button id="closeSource" type="button" class="boton-secundario">Volver al resultado</button>
+  </dialog>
 </body>
 </html>
