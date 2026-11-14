@@ -2,9 +2,31 @@
 
 const $ = id => document.getElementById(id);
 const ui = {
+  app: document.querySelector(".app"),
+  main: $("main"),
+  sidebar: $("sidebar"),
+  scrim: $("scrim"),
+  closeSidebar: $("closeSidebar"),
+  newChat: $("newChat"),
+  dropZone: $("dropZone"),
+  fileList: $("fileList"),
+  touchedWrap: $("touchedWrap"),
+  touchedFiles: $("touchedFiles"),
+  touchedNote: $("touchedNote"),
+  openGuide: $("openGuide"),
+  openGuideTop: $("openGuideTop"),
+  guideDialog: $("guideDialog"),
+  closeGuide: $("closeGuide"),
+  projectName: $("projectName"),
+  thread: $("thread"),
+  welcome: $("welcome"),
+  uploadHint: $("uploadHint"),
+  history: $("history"),
+  turn: $("turn"),
+  turnQuestion: $("turnQuestion"),
+  searchLabel: $("searchLabel"),
   apiState: $("apiState"),
   menuButton: $("menuButton"),
-  mainNav: $("mainNav"),
   useExample: $("useExample"),
   useUpload: $("useUpload"),
   uploadPanel: $("uploadPanel"),
@@ -123,9 +145,11 @@ function status(message, error) {
   }
 }
 
+/* El hilo de la conversación es el contenedor con scroll, no la ventana. */
 function revealIfNeeded(node) {
   const box = node.getBoundingClientRect();
-  if (box.top < 0 || box.top > window.innerHeight * 0.75)
+  const view = ui.thread.getBoundingClientRect();
+  if (box.top < view.top || box.top > view.top + view.height * 0.7)
     node.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
 }
 
@@ -146,10 +170,6 @@ function setStage(name, state, text) {
 
 function resetStages() {
   ["recuperar", "contexto", "responder"].forEach(name => setStage(name, "idle"));
-}
-
-function stopIntro() {
-  ui.stages.classList.remove("intro");
 }
 
 /* ---------- fragmentos: líneas, coincidencias y relevancia ---------- */
@@ -255,6 +275,7 @@ function renderSources(sources, seconds) {
   sources.forEach((source, index) => {
     const card = el("article", "fragmento");
     card.id = "fragmento-" + (index + 1);
+    card.dataset.n = index + 1;
     card.style.setProperty("--i", index);
     card.setAttribute("aria-label", "Fragmento " + (index + 1) + ": " + source.ruta + ", " + placeOf(source));
 
@@ -304,6 +325,34 @@ function renderSources(sources, seconds) {
   ui.resultFoot.textContent = session.mode === "completo" ?
     "La búsqueda híbrida tardó " + formatSeconds(seconds) + ", incluido el cálculo del vector de tu pregunta en OpenAI." :
     "La búsqueda tardó " + formatSeconds(seconds) + " en este servidor.";
+  updateTouched();
+}
+
+/* Columna: los archivos que tocó la última búsqueda, con los citados resaltados. */
+function updateTouched() {
+  const sources = session.sources;
+  if (!sources.length) { ui.touchedWrap.hidden = true; ui.touchedFiles.replaceChildren(); return; }
+  const cited = new Set(session.cited);
+  const files = new Map();
+  sources.forEach((source, index) => {
+    const file = files.get(source.ruta) || { count: 0, first: index + 1, cited: false };
+    file.count += 1;
+    if (cited.has(index + 1)) file.cited = true;
+    files.set(source.ruta, file);
+  });
+  ui.touchedFiles.replaceChildren(...Array.from(files, ([path, file]) => {
+    const item = el("li");
+    const button = el("button", "tocado" + (file.cited ? " citado" : ""));
+    button.type = "button";
+    button.title = path;
+    button.setAttribute("aria-label", path + ", " + plural(file.count, "fragmento") + (file.cited ? ", citado en la respuesta" : "") + ". Mostrar");
+    button.append(el("span", "tocado-ruta", path.split("/").pop()), el("span", "tocado-veces", String(file.count)));
+    button.addEventListener("click", () => { setSidebar(false); focusSource(file.first); });
+    item.append(button);
+    return item;
+  }));
+  ui.touchedNote.hidden = !session.cited.length;
+  ui.touchedWrap.hidden = false;
 }
 
 function formatSeconds(seconds) {
@@ -324,6 +373,7 @@ function markCited(numbers) {
     badges.prepend(isCited ? el("span", "insignia insignia-citado", "Citado") : el("span", "insignia insignia-sin", "No citado"));
     if (isCited) card.querySelectorAll(".linea").forEach(line => line.classList.add("marcada"));
   });
+  updateTouched();
 }
 
 function focusSource(number) {
@@ -398,6 +448,7 @@ function renderAnswer(data) {
       const source = session.sources[number - 1];
       const chip = el("button", "cita", source.ruta.split("/").pop() + " " + shortPlace(source));
       chip.type = "button";
+      chip.dataset.n = number;
       chip.style.setProperty("--i", i);
       chip.setAttribute("aria-label", "Cita " + number + ": " + source.ruta + ", " + placeOf(source) + ". Mostrar el fragmento");
       chip.addEventListener("click", () => { focusSource(number); replay(chip, "marcada"); });
@@ -551,8 +602,52 @@ function clearResults() {
   session.previousActions = null;
   session.previousKeys = null;
   ui.answerButton.hidden = false;
+  ui.touchedWrap.hidden = true;
+  ui.touchedFiles.replaceChildren();
   resetStages();
   status("", false);
+}
+
+/* El turno en curso pasa al historial como copia de solo lectura: se puede releer y
+   tocar sus citas, pero sus acciones (enviar, comparar, traducir) quedan en el turno nuevo. */
+function archiveTurn() {
+  if (ui.turn.hidden) return;
+  const copy = ui.turn.cloneNode(true);
+  copy.removeAttribute("id");
+  copy.removeAttribute("aria-labelledby");
+  copy.setAttribute("aria-label", "Pregunta anterior: " + ui.turnQuestion.textContent);
+  copy.classList.add("turno-archivado");
+  copy.querySelectorAll("[hidden], .permiso, .aviso, .modo, .botonera, .ver-completo, .comparacion .boton-texto").forEach(node => node.remove());
+  copy.querySelectorAll("[id]").forEach(node => node.removeAttribute("id"));
+  copy.querySelectorAll("[tabindex='-1']").forEach(node => node.removeAttribute("tabindex"));
+
+  const finds = copy.querySelector(".hallazgos");
+  const count = finds ? finds.querySelectorAll(".fragmento").length : 0;
+  if (finds && count) {
+    const wrap = el("details", "desplegable archivo-fragmentos");
+    wrap.append(el("summary", "", count === 1 ? "Ver el fragmento que encontró la búsqueda" : "Ver los " + count + " fragmentos que encontró la búsqueda"));
+    finds.querySelector(".hallazgos-titulo").remove();
+    finds.replaceWith(wrap);
+    wrap.append(finds);
+    copy.querySelectorAll(".cita").forEach(chip => chip.addEventListener("click", () => {
+      const card = copy.querySelector('.fragmento[data-n="' + chip.dataset.n + '"]');
+      if (!card) return;
+      wrap.open = true;
+      card.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+    }));
+  } else if (finds) {
+    finds.remove();
+  }
+  ui.history.append(copy);
+}
+
+function resetThread() {
+  discardPendingHybrid();
+  ui.history.replaceChildren();
+  ui.turn.hidden = true;
+  clearResults();
+  ui.welcome.hidden = false;
+  ui.thread.scrollTop = 0;
 }
 
 function showNextSteps(options) {
@@ -570,7 +665,6 @@ function showNextSteps(options) {
   ui.modeTag.dataset.mode = hybrid ? "completo" : "acotado";
   ui.modeTag.textContent = hybrid ? "Búsqueda híbrida: palabras y significado" : "Búsqueda por palabras";
   ui.hybridButton.hidden = !session.modelAvailable || hybrid;
-  ui.stages.classList.add("con-resultado");
 
   if (count) {
     setStage("recuperar", "done", plural(count, "fragmento encontrado", "fragmentos encontrados") + (hybrid ? ", con palabras y significado" : ", en este servidor"));
@@ -615,7 +709,7 @@ function showNextSteps(options) {
     announce("No se encontraron fragmentos. El sistema no responde sin evidencia.");
   }
   if (!keepPosition) {
-    revealIfNeeded(ui.stages);
+    revealIfNeeded(ui.turn);
     ui.answerStage.focus({ preventScroll: true });
   }
 }
@@ -624,10 +718,12 @@ function showNextSteps(options) {
 
 function setBusy(value) {
   session.busy = value;
-  [ui.searchButton, ui.backToLexical, ui.question, ui.uploadFiles, ui.useExample, ui.useUpload, ui.answerButton, ui.translateButton, ui.hybridButton, ui.indexButton, ui.cancelIndex]
+  [ui.searchButton, ui.backToLexical, ui.uploadFiles, ui.useExample, ui.useUpload, ui.newChat, ui.answerButton, ui.translateButton, ui.hybridButton, ui.indexButton, ui.cancelIndex]
     .forEach(node => { node.disabled = value; });
+  ui.question.readOnly = value;
   ui.suggestions.querySelectorAll("button").forEach(node => { node.disabled = value; });
-  ui.searchButton.textContent = value ? "Buscando…" : "Buscar en el proyecto";
+  ui.searchLabel.textContent = value ? "Buscando…" : "Buscar";
+  ui.app.setAttribute("aria-busy", String(value));
 }
 
 async function ensureCollection(mode) {
@@ -650,7 +746,7 @@ async function ensureCollection(mode) {
   session.origin = origin;
   session.queryId = null;
   ui.deleteUpload.hidden = origin !== "carga";
-  if (origin === "carga") ui.uploadSummary.textContent = filesSummary() + ". Ya están en el servidor; se borran en menos de 24 horas.";
+  if (origin === "carga") ui.uploadSummary.textContent = plural(ui.uploadFiles.files.length, "archivo") + " en el servidor. Se borran en menos de 24 horas.";
   return created;
 }
 
@@ -686,16 +782,25 @@ function releaseCollections() {
 window.addEventListener("pagehide", releaseCollections);
 
 function filesSummary() {
-  const files = Array.from(ui.uploadFiles.files);
-  return files.length ? files.map(file => file.name).join(", ") : "Todavía no elegiste archivos.";
+  const count = ui.uploadFiles.files.length;
+  return count ? plural(count, "archivo elegido", "archivos elegidos") + ". Se suben cuando hagas la primera pregunta." : "Todavía no elegiste archivos.";
 }
 
 async function search() {
   if (session.busy) return;
   const question = ui.question.value.trim();
-  stopIntro();
   if (!question) { status("Escribí una pregunta para buscar en el proyecto.", true); ui.question.focus(); return; }
+  if (session.selectedOrigin === "carga" && !ui.uploadFiles.files.length && !(session.id && session.origin === "carga")) {
+    status("Elegí al menos un archivo en la columna de la izquierda antes de preguntar.", true);
+    setSidebar(true);
+    return;
+  }
+  archiveTurn();
   clearResults();
+  ui.welcome.hidden = true;
+  ui.turnQuestion.textContent = question;
+  ui.turn.hidden = false;
+  ui.turn.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
   setBusy(true);
   setStage("recuperar", "active", session.selectedOrigin === "carga" ? "Preparando tus archivos y buscando…" : "Buscando en el código y los documentos…");
   try {
@@ -705,10 +810,14 @@ async function search() {
     });
     session.question = question;
     session.queryId = query.consulta_id;
+    ui.question.value = "";
+    autosize();
+    updateCounter();
     renderSources(query.fuentes, query.tiempos.recuperacion);
     showNextSteps();
   } catch (error) {
     resetStages();
+    setStage("recuperar", "skipped", "No se pudo buscar");
     status(error.message, true);
   } finally { setBusy(false); }
 }
@@ -858,37 +967,111 @@ async function cancelHybrid() {
 function runSuggestion(item) {
   if (session.busy) return;
   ui.question.value = item.pregunta;
+  autosize();
   updateCounter();
   search();
 }
 
 /* ---------- origen: ejemplo o archivos propios ---------- */
 
+const ACEPTADOS = /\.(py|js|jsx|ts|tsx|mjs|cjs|md|markdown|txt|pdf)$/i;
+
+function describeProject() {
+  const upload = session.selectedOrigin === "carga";
+  const names = Array.from(ui.uploadFiles.files).map(file => file.name);
+  ui.projectName.textContent = upload ? "Mis archivos" : "Proyecto de ejemplo";
+  ui.collectionHint.textContent = upload ?
+    (names.length ? names.join(", ") : "La búsqueda se hace en este servidor. Nada se envía a OpenAI sin que lo autorices.") :
+    "Un gestor de tareas ficticio, con código Python y documentos de texto.";
+  ui.questionLabel.textContent = upload ? "Tu pregunta sobre tus archivos" : "Tu pregunta sobre el proyecto de ejemplo";
+  ui.question.placeholder = upload ?
+    (names.length ? "Preguntá sobre tus archivos" : "Primero elegí tus archivos") :
+    "Escribí tu pregunta";
+  ui.suggestionsWrap.hidden = upload;
+  ui.uploadHint.hidden = !upload || names.length > 0;
+  autosize();
+}
+
 function chooseOrigin(origin) {
   if (session.busy) return;
-  discardPendingHybrid();
   session.selectedOrigin = origin;
   ui.uploadPanel.hidden = origin !== "carga";
-  ui.suggestionsWrap.hidden = origin !== "ejemplo";
-  ui.questionLabel.textContent = origin === "carga" ? "Tu pregunta sobre tus archivos" : "Tu pregunta sobre el proyecto de ejemplo";
-  ui.collectionHint.textContent = origin === "carga" ?
-    "La búsqueda se hace en este servidor. Nada se envía a OpenAI sin que lo autorices." :
-    "Un gestor de tareas ficticio, con código Python y documentos de texto.";
-  ui.searchButton.textContent = "Buscar en el proyecto";
   ui.useExample.setAttribute("aria-pressed", String(origin === "ejemplo"));
   ui.useUpload.setAttribute("aria-pressed", String(origin === "carga"));
   ui.question.value = "";
+  autosize();
   updateCounter();
-  clearResults();
+  resetThread();
+  describeProject();
 }
+
+function formatBytes(bytes) {
+  if (bytes < 1000) return bytes + " B";
+  if (bytes < 1_000_000) return Math.round(bytes / 1000) + " KB";
+  return (bytes / 1_000_000).toLocaleString("es-AR", { maximumFractionDigits: 1 }) + " MB";
+}
+
+function renderFileList() {
+  const icon = '<svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11.5 3H6a1.5 1.5 0 0 0-1.5 1.5v11A1.5 1.5 0 0 0 6 17h8a1.5 1.5 0 0 0 1.5-1.5V7z"/><path d="M11.5 3v4h4"/></svg>';
+  ui.fileList.replaceChildren(...Array.from(ui.uploadFiles.files).map(file => {
+    const item = el("li", "archivo");
+    item.insertAdjacentHTML("afterbegin", icon);
+    const name = el("span", "archivo-nombre", file.name);
+    name.title = file.name;
+    item.append(name, el("span", "archivo-peso", formatBytes(file.size)));
+    return item;
+  }));
+}
+
+/* Arrastrar y soltar: en la zona de la columna o en cualquier parte de la página. */
+function takeFiles(list) {
+  if (session.busy) return;
+  const all = Array.from(list || []);
+  const valid = all.filter(file => ACEPTADOS.test(file.name));
+  if (!valid.length) {
+    status("Esos archivos no se pueden consultar. Se admiten código Python, JavaScript o TypeScript, Markdown, TXT y PDF.", true);
+    return;
+  }
+  if (session.selectedOrigin !== "carga") chooseOrigin("carga");
+  const transfer = new DataTransfer();
+  valid.slice(0, 5).forEach(file => transfer.items.add(file));
+  ui.uploadFiles.files = transfer.files;
+  ui.uploadFiles.dispatchEvent(new Event("change"));
+  const left = all.length - Math.min(valid.length, 5);
+  if (left) status(plural(Math.min(valid.length, 5), "archivo agregado", "archivos agregados") + ". " + plural(left, "quedó afuera", "quedaron afuera") + " por el formato o por pasar de cinco.", false);
+}
+
+const hasFiles = event => Array.from((event.dataTransfer && event.dataTransfer.types) || []).includes("Files");
+let dragDepth = 0;
+function endDrag() { dragDepth = 0; ui.app.classList.remove("soltando"); ui.dropZone.classList.remove("arrastrando"); }
+document.addEventListener("dragenter", event => {
+  if (!hasFiles(event)) return;
+  dragDepth += 1;
+  ui.app.classList.add("soltando");
+  ui.dropZone.classList.add("arrastrando");
+});
+document.addEventListener("dragover", event => { if (hasFiles(event)) event.preventDefault(); });
+document.addEventListener("dragleave", event => {
+  if (!hasFiles(event)) return;
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) endDrag();
+});
+document.addEventListener("drop", event => {
+  if (!hasFiles(event)) return;
+  event.preventDefault();
+  endDrag();
+  takeFiles(event.dataTransfer.files);
+});
 
 ui.useExample.addEventListener("click", () => chooseOrigin("ejemplo"));
 ui.useUpload.addEventListener("click", () => chooseOrigin("carga"));
 ui.uploadFiles.addEventListener("change", () => {
-  ui.uploadSummary.textContent = filesSummary();
   if (session.origin === "carga") session.mode = null;
-  discardPendingHybrid();
-  clearResults();
+  resetThread();
+  renderFileList();
+  ui.uploadSummary.textContent = filesSummary();
+  describeProject();
+  if (ui.uploadFiles.files.length) ui.question.focus();
 });
 ui.deleteUpload.addEventListener("click", async () => {
   if (!session.id || session.origin !== "carga") return;
@@ -900,14 +1083,15 @@ ui.deleteUpload.addEventListener("click", async () => {
     session.queryId = null;
     ui.deleteUpload.hidden = true;
     ui.uploadFiles.value = "";
-    ui.uploadSummary.textContent = filesSummary();
-    clearResults();
+    renderFileList();
+    resetThread();
+    ui.uploadSummary.textContent = "Tus archivos se borraron del servidor.";
+    describeProject();
     status("Tus archivos se borraron del servidor.", false);
-    ui.question.focus();
   } catch (error) { status(error.message, true); }
 });
 
-/* ---------- formulario y navegación ---------- */
+/* ---------- compositor ---------- */
 
 function updateCounter() {
   const length = ui.question.value.length;
@@ -915,7 +1099,19 @@ function updateCounter() {
   ui.counter.textContent = length + " de 500 caracteres";
 }
 
+function autosize() {
+  ui.question.style.height = "auto";
+  ui.question.style.height = Math.min(ui.question.scrollHeight, 200) + "px";
+}
+
 ui.queryForm.addEventListener("submit", event => { event.preventDefault(); search(); });
+ui.question.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    ui.queryForm.requestSubmit();
+  }
+});
+ui.question.addEventListener("input", () => { updateCounter(); autosize(); });
 ui.answerButton.addEventListener("click", generateAnswer);
 ui.translateButton.addEventListener("click", translateQuestion);
 ui.hybridButton.addEventListener("click", prepareHybrid);
@@ -926,29 +1122,63 @@ ui.backToLexical.addEventListener("click", () => {
   ui.question.value = session.question;
   search();
 });
-ui.question.addEventListener("input", () => {
-  updateCounter();
-  if (session.question && ui.question.value.trim() !== session.question) {
-    discardPendingHybrid();
-    clearResults();
-  }
+ui.newChat.addEventListener("click", () => {
+  if (session.busy) return;
+  resetThread();
+  setSidebar(false);
+  ui.question.focus();
 });
 
-ui.menuButton.addEventListener("click", () => {
-  const open = ui.menuButton.getAttribute("aria-expanded") !== "true";
+/* ---------- columna como cajón en pantallas chicas ---------- */
+
+const narrow = window.matchMedia("(max-width: 900px)");
+
+function syncInert() {
+  const open = ui.app.classList.contains("lateral-abierta");
+  ui.sidebar.inert = narrow.matches && !open;
+  ui.main.inert = narrow.matches && open;
+}
+
+function setSidebar(open) {
+  if (!narrow.matches) open = false;
+  const wasOpen = ui.app.classList.contains("lateral-abierta");
+  ui.app.classList.toggle("lateral-abierta", open);
   ui.menuButton.setAttribute("aria-expanded", String(open));
-  ui.mainNav.classList.toggle("abierta", open);
+  ui.scrim.hidden = !open;
+  syncInert();
+  if (open && !wasOpen) ui.closeSidebar.focus();
+  if (!open && wasOpen && ui.sidebar.contains(document.activeElement)) ui.menuButton.focus();
+}
+
+ui.menuButton.addEventListener("click", () => setSidebar(true));
+ui.closeSidebar.addEventListener("click", () => setSidebar(false));
+ui.scrim.addEventListener("click", () => setSidebar(false));
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && ui.app.classList.contains("lateral-abierta")) setSidebar(false);
 });
-ui.mainNav.addEventListener("click", event => {
-  if (event.target.closest("a")) {
-    ui.menuButton.setAttribute("aria-expanded", "false");
-    ui.mainNav.classList.remove("abierta");
-  }
-});
+narrow.addEventListener("change", () => { if (!narrow.matches) setSidebar(false); syncInert(); });
+syncInert();
+
+/* ---------- guía ---------- */
+
+function openGuide() {
+  setSidebar(false);
+  ui.guideDialog.showModal();
+  ui.closeGuide.focus();
+}
+ui.openGuide.addEventListener("click", openGuide);
+ui.openGuideTop.addEventListener("click", openGuide);
+ui.closeGuide.addEventListener("click", () => ui.guideDialog.close());
+ui.guideDialog.addEventListener("click", event => { if (event.target === ui.guideDialog) ui.guideDialog.close(); });
+ui.guideDialog.querySelectorAll(".guia-indice a").forEach(link => link.addEventListener("click", event => {
+  event.preventDefault();
+  const target = document.querySelector(link.getAttribute("href"));
+  if (target) target.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+}));
+
 document.querySelector(".skip-link").addEventListener("click", event => {
   event.preventDefault();
   ui.question.focus();
-  ui.question.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
 });
 
 /* ---------- inicio ---------- */
@@ -956,23 +1186,20 @@ document.querySelector(".skip-link").addEventListener("click", event => {
 const SUGERENCIAS_VISIBLES = ["codigo", "cruce", "politica", "abstencion"];
 
 async function initialize() {
-  if (!reduceMotion.matches) {
-    ui.stages.classList.add("intro");
-    window.setTimeout(stopIntro, 2600);
-  }
   try {
     const [state, questions] = await Promise.all([api("/estado"), api("/preguntas-ejemplo")]);
     session.modelAvailable = state.modelo_disponible;
     session.indexAvailable = state.indice_ejemplo_preparado;
     session.suggestions = questions;
     ui.apiState.dataset.model = state.modelo_disponible ? "si" : "no";
-    ui.apiState.textContent = state.modelo_disponible ? "Esta demo responde con OpenAI" : "Esta demo está en modo solo búsqueda";
+    ui.apiState.textContent = state.modelo_disponible ? "Responde con OpenAI cuando lo autorizás" : "Solo búsqueda: el servidor no tiene clave de OpenAI";
     const visible = questions.filter(item => SUGERENCIAS_VISIBLES.includes(item.id));
     (visible.length ? visible : questions).forEach(item => {
-      const button = el("button", "sugerencia" + (item.id === "abstencion" ? " sugerencia-sin" : ""), item.pregunta);
+      const without = item.id === "abstencion";
+      const button = el("button", "sugerencia" + (without ? " sugerencia-sin" : ""));
       button.type = "button";
       button.title = item.descripcion;
-      if (item.id === "abstencion") button.append(" ", el("span", "", "(no está en el proyecto)"));
+      button.append(el("span", "sugerencia-tipo", without ? "No está en el proyecto" : item.categoria), el("span", "sugerencia-pregunta", item.pregunta));
       button.addEventListener("click", () => runSuggestion(item));
       ui.suggestions.append(button);
     });
@@ -982,6 +1209,7 @@ async function initialize() {
     status("No se pudo conectar con el servidor: " + error.message + ". Recargá la página en un momento.", true);
   }
 }
+describeProject();
 initialize();
 
 /* ---------- comparativa de búsquedas ---------- */
