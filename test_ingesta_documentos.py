@@ -6,12 +6,15 @@ from io import BytesIO
 from pypdf import PdfWriter
 
 from fragmentos import identidad, lugar, se_superponen
-from ingesta_documentos import fragmentos_desde_bytes
+from ingesta_documentos import fragmentos_desde_bytes, limpiar_texto_pdf
 from ingesta_fuentes import obtener_fragmentos
 
 
 def pdf_con_texto(texto):
-    contenido = f"BT /F1 12 Tf 72 720 Td ({texto}) Tj ET".encode("ascii")
+    return pdf_con_contenido(f"BT /F1 12 Tf 72 720 Td ({texto}) Tj ET".encode("ascii"))
+
+
+def pdf_con_contenido(contenido):
     objetos = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -56,6 +59,27 @@ class IngestaDocumentosTest(unittest.TestCase):
             fragmentos_desde_bytes("docs/vacio.pdf", salida.getvalue(), avisos), []
         )
         self.assertTrue(any("sin texto seleccionable" in aviso for aviso in avisos))
+
+    def test_pdf_con_palabras_sueltas_reconstruye_renglones(self):
+        # Como exportan los editores visuales: cada palabra y cada letra del título por separado.
+        palabras = [("Experiencia", 72), ("con", 140), ("JavaScript", 165), ("y", 225), ("React", 236)]
+        titulo = " ".join(
+            f"BT /F1 12 Tf {72 + 12 * i} 750 Td ({letra}) Tj ET" for i, letra in enumerate("SKILLS")
+        )
+        cuerpo = " ".join(f"BT /F1 12 Tf {x} 720 Td ({p}) Tj ET" for p, x in palabras)
+        fragmentos = fragmentos_desde_bytes(
+            "cv.pdf", pdf_con_contenido(f"{titulo} {cuerpo}".encode("ascii"))
+        )
+        texto = "\n".join(f["texto"] for f in fragmentos)
+        self.assertIn("Experiencia con JavaScript y React", texto)
+        self.assertIn("SKILLS", texto)
+        self.assertEqual(fragmentos[0]["simbolo"], "SKILLS")
+
+    def test_limpieza_de_letras_espaciadas_y_glifos(self):
+        self.assertEqual(
+            limpiar_texto_pdf("E X P E R I E N C I A   L A B O R A L\n(cid:127) Python y R"),
+            "EXPERIENCIA LABORAL\n• Python y R",
+        )
 
     def test_coleccion_mixta_compartida(self):
         fragmentos = obtener_fragmentos("sample_project", coleccion_id="ejemplo-prueba")

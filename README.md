@@ -118,15 +118,36 @@ Reproducir la medición sin API:
 
 Para comparar los mismos casos con búsqueda semántica e híbrida, el evaluador exige `OPENAI_API_KEY` y `--todos --autorizar-indexar`. Para evaluar respuestas y abstenciones, sumá `--respuestas --autorizar-responder`. En la última ejecución, los modos léxico e híbrido respondieron **6/7** positivas con una cita esperada y se abstuvieron en **2/2** negativas. Se hicieron 9 peticiones de embeddings (171 tokens con índice caliente) y 15 de respuesta (6586 tokens de entrada y 848 de salida). Los 12 textos afirmativos se revisaron contra sus fragmentos y no se detectaron afirmaciones sin respaldo; esta revisión es pequeña y no sustituye una evaluación externa. La pregunta sobre pagos estaba mal etiquetada en la primera versión: `docs/correccion_evaluacion.md` conserva la explicación y la medición inicial. El conjunto ya fue inspeccionado, por lo que dejó de ser ciego para ajustes futuros. Los experimentos previos se resumen en `docs/experimentos_previos.md`.
 
+### PDFs y currículums
+
+`eval_pdf/` tiene cuatro CVs ficticios con layouts típicos (exportado de Word, dos columnas con barra lateral, plantilla en inglés con espaciado entre letras y una plantilla de editor visual que dibuja cada palabra por separado) y 45 preguntas (`eval_pdf/casos.json`), más 17 de control escritas después de los ajustes (`eval_pdf/casos_control.json`). Cada PDF se prepara solo, como una carga de "Mis archivos" en modo acotado.
+
+| Conjunto | Antes | Ahora |
+|---|---|---|
+| Principal: fuente correcta primera (40 positivas) | 22 | 38 |
+| Principal: preguntas sin ninguna fuente | 18 | 0 |
+| Principal: negativas sin fuentes (5) | 5 | 2 |
+| Control: fuente correcta primera (16 positivas) | 9 | 14 |
+| Control: preguntas sin ninguna fuente | 7 | 0 |
+
+Las negativas que ahora devuelven fuentes combinan una palabra genérica presente ("experiencia") con un nombre ausente ("Salesforce"); la etapa de respuesta valida la evidencia y debería abstenerse. Los evaluadores de código (`questions*.json`, `eval_heldout/`) dan los mismos resultados que antes.
+
+```powershell
+.\.venv\Scripts\python.exe -B evaluar_pdf.py --detalle
+.\.venv\Scripts\python.exe -B evaluar_pdf.py --cvs carpeta_con_tus_pdfs --casos tus_casos.json
+```
+
+Los PDFs se regeneran con `eval_pdf/generar_cvs.py` (reportlab y LibreOffice).
+
 Las pruebas automatizadas simulan OpenAI y verifican CLI, ingesta, privacidad, citas, API, aislamiento, vencimiento y límites:
 
 ```powershell
-.\.venv\Scripts\python.exe -B -m unittest -q test_inicio.py test_semantica.py test_validar_evidencia.py test_multistack.py test_servicio_consultas.py test_api_http.py test_ingesta_documentos.py test_cargas_temporales.py
+.\.venv\Scripts\python.exe -B -m unittest -q test_inicio.py test_semantica.py test_validar_evidencia.py test_multistack.py test_servicio_consultas.py test_api_http.py test_ingesta_documentos.py test_cargas_temporales.py test_recuperacion_documentos.py
 ```
 
-En la última ejecución local pasaron **72 pruebas**. También se verificó en navegador una respuesta del ejemplo con cita a `permissions.py`, una abstención sin fuentes y la carga de código y Markdown con borrado manual.
+En la última ejecución local pasaron **82 pruebas**. También se verificó en navegador una respuesta del ejemplo con cita a `permissions.py`, una abstención sin fuentes y la carga de código y Markdown con borrado manual.
 
-En una medición local de Windows sin OpenAI, cinco TXT sintéticos (625 fragmentos) tardaron 0,216 s en cargarse y alcanzaron 83,9 MiB de memoria residente del proceso. Un PDF sintético de 100 páginas (100 fragmentos) tardó 0,075 s y alcanzó 81,9 MiB. Estos casos no cubren un PDF de 10 MB malicioso, concurrencia ni el límite real de un contenedor de 0,5 GB.
+En una medición local de Windows sin OpenAI, cinco TXT sintéticos (625 fragmentos) tardaron 0,216 s en cargarse y alcanzaron 83,9 MiB de memoria residente del proceso. Un PDF sintético de 100 páginas (100 fragmentos) tardó 0,075 s y alcanzó 81,9 MiB. Desde que los PDFs se leen con pdfminer para reconstruir renglones, un PDF denso de 100 páginas (4500 renglones) pasó de 0,46 s a 1,76 s en Linux. Estos casos no cubren un PDF de 10 MB malicioso, concurrencia ni el límite real de un contenedor de 0,5 GB.
 
 ## Contenedor y despliegue
 
