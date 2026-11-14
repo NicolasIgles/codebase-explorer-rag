@@ -60,7 +60,9 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 
 /* ---------- Armazón ---------- */
 
-.app { --panel: clamp(380px, 30vw, 500px); display: grid; grid-template-columns: var(--lateral) minmax(0, 1fr) auto; height: 100vh; height: 100dvh; }
+/* La app ocupa la ventana fija: la página nunca se desplaza, solo sus columnas */
+.app { --panel: clamp(380px, 30vw, 500px); position: fixed; inset: 0; overflow: hidden; display: grid; grid-template-columns: var(--lateral) minmax(0, 1fr) auto; grid-template-rows: minmax(0, 1fr); }
+.hilo, .evidencia-cuerpo, .lateral-scroll, .guia-cuerpo { position: relative; }
 
 /* ---------- Botones compartidos ---------- */
 

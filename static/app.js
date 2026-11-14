@@ -156,17 +156,26 @@ function status(message, error) {
   ui.status.setAttribute("role", error ? "alert" : "status");
   ui.status.hidden = !message;
   if (message && error) {
-    ui.status.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
     ui.status.focus({ preventScroll: true });
   }
 }
 
-/* El hilo de la conversación es el contenedor con scroll, no la ventana. */
+/* Desplaza solo el contenedor indicado (el hilo, el panel o la guía), nunca la página:
+   scrollIntoView también movería los contenedores de afuera. */
+function scrollInside(container, node, block) {
+  const view = container.getBoundingClientRect();
+  const box = node.getBoundingClientRect();
+  if (block === "nearest" && box.top >= view.top && box.bottom <= view.bottom) return;
+  let top = container.scrollTop + (box.top - view.top) - 12;
+  if (block === "nearest" && box.bottom > view.bottom && box.height < view.height)
+    top = container.scrollTop + (box.bottom - view.bottom) + 12;
+  container.scrollTo({ top: Math.max(0, top), behavior: scrollBehavior() });
+}
+
 function revealIfNeeded(node) {
   const box = node.getBoundingClientRect();
   const view = ui.thread.getBoundingClientRect();
-  if (box.top < view.top || box.top > view.top + view.height * 0.7)
-    node.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  if (box.top < view.top || box.top > view.top + view.height * 0.7) scrollInside(ui.thread, node, "start");
 }
 
 function replay(node, className) {
@@ -410,7 +419,7 @@ function focusSource(number) {
   const card = $("fragmento-" + number);
   if (!card) return;
   openEvidence();
-  card.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  scrollInside(ui.evidenceBody, card, "start");
   replay(card, "destello");
   card.querySelectorAll(".linea").forEach(line => line.classList.remove("marcada"));
   void card.offsetWidth;
@@ -667,7 +676,7 @@ function archiveTurn() {
     const show = number => {
       openArchivedEvidence(snapshot, question);
       const card = number && snapshot.querySelector('.fragmento[data-n="' + number + '"]');
-      if (card) card.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+      if (card) scrollInside(ui.evidenceBody, card, "start");
     };
     const actions = el("div", "acciones-turno");
     const button = el("button", "accion", cards === 1 ? "Ver el fragmento que encontró" : "Ver los " + cards + " fragmentos que encontró");
@@ -694,7 +703,7 @@ function openEvidence(target, moveFocus) {
   ui.evidence.hidden = false;
   ui.app.classList.add("panel-abierto");
   ui.sourcesButton.setAttribute("aria-expanded", "true");
-  if (target) target.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  if (target) scrollInside(ui.evidenceBody, target, "start");
   if (moveFocus) ui.evidenceTitle.focus({ preventScroll: true });
 }
 
@@ -885,7 +894,7 @@ async function search() {
   ui.composerHelp.hidden = true;
   ui.turnQuestion.textContent = question;
   ui.turn.hidden = false;
-  ui.turn.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  scrollInside(ui.thread, ui.turn, "start");
   setBusy(true);
   setStage("recuperar", "active", session.selectedOrigin === "carga" ? "Preparando tus archivos y buscando…" : "Buscando en el código y los documentos…");
   try {
@@ -977,7 +986,7 @@ async function prepareHybrid() {
     setBusy(false);
     if (!ui.hybridPanel.hidden) {
       ui.indexButton.focus({ preventScroll: true });
-      ui.hybridPanel.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+      scrollInside(ui.thread, ui.hybridPanel, "nearest");
     }
   }
 }
@@ -1116,7 +1125,8 @@ function takeFiles(list) {
   const all = Array.from(list || []);
   const valid = all.filter(file => ACEPTADOS.test(file.name));
   if (!valid.length) {
-    status("Esos archivos no se pueden consultar. Se admiten código Python, JavaScript o TypeScript, Markdown, TXT y PDF.", true);
+    const names = all.map(file => file.name).join(", ");
+    status((all.length === 1 ? names + " no se puede consultar" : "Esos archivos no se pueden consultar") + ". Se admiten código Python, JavaScript o TypeScript, Markdown, TXT y PDF.", true);
     return;
   }
   if (session.selectedOrigin !== "carga") chooseOrigin("carga");
@@ -1198,7 +1208,11 @@ ui.question.addEventListener("keydown", event => {
     ui.queryForm.requestSubmit();
   }
 });
-ui.question.addEventListener("input", () => { updateCounter(); autosize(); });
+ui.question.addEventListener("input", () => {
+  updateCounter();
+  autosize();
+  if (!ui.status.hidden && !session.busy) status("", false);
+});
 ui.answerButton.addEventListener("click", generateAnswer);
 ui.translateButton.addEventListener("click", translateQuestion);
 ui.hybridButton.addEventListener("click", prepareHybrid);
@@ -1269,7 +1283,7 @@ ui.guideDialog.addEventListener("click", event => { if (event.target === ui.guid
 ui.guideDialog.querySelectorAll(".guia-indice a").forEach(link => link.addEventListener("click", event => {
   event.preventDefault();
   const target = document.querySelector(link.getAttribute("href"));
-  if (target) target.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  if (target) scrollInside(ui.guideDialog.querySelector(".guia-cuerpo"), target, "start");
 }));
 
 document.querySelector(".skip-link").addEventListener("click", event => {
