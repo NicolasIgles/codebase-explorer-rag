@@ -9,8 +9,8 @@
   <meta name="description" content="Un laboratorio de RAG: hacé una pregunta sobre un proyecto de código, mirá qué fragmentos encuentra la búsqueda y cómo el modelo responde citándolos.">
   <link rel="preload" href="/assets/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/atkinson-hyperlegible-next-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/styles.css?v=3">
-  <script defer src="/assets/app.js?v=3"></script>
+  <link rel="stylesheet" href="/assets/styles.css?v=4">
+  <script defer src="/assets/app.js?v=4"></script>
 </head>
 <body>
   <a class="skip-link" href="#question">Ir a la pregunta</a>
@@ -110,18 +110,14 @@
             <p class="bajada">Esto es RAG. Primero se buscan los fragmentos del proyecto que hablan de tu pregunta. Después el modelo responde usando solo esos fragmentos y cita cada uno, para que puedas comprobarlo.</p>
 
             <figure class="muestra">
-              <ol class="muestra-pasos">
-                <li><span class="muestra-check" aria-hidden="true"></span><span><strong>Recuperar</strong> encontró 2 fragmentos en este servidor</span></li>
-                <li><span class="muestra-check" aria-hidden="true"></span><span><strong>Armar el contexto</strong> con tu pregunta y esos fragmentos</span></li>
-                <li><span class="muestra-check" aria-hidden="true"></span><span><strong>Responder con citas</strong> usó 1 de los 2</span></li>
-              </ol>
+              <p class="muestra-proceso"><span class="muestra-check" aria-hidden="true"></span>Usó 1 de los 2 fragmentos que encontró</p>
               <p class="muestra-respuesta">Solo el responsable de la tarea o un administrador pueden editarla. <span class="muestra-cita">permissions.py 4–6</span></p>
               <div class="muestra-codigo" aria-hidden="true">
                 <div class="linea"><span class="ln">4</span><span class="lc">def can_edit_task(user, task):</span></div>
                 <div class="linea"><span class="ln">5</span><span class="lc">    """Responsable o administrador."""</span></div>
                 <div class="linea"><span class="ln">6</span><span class="lc">    return user.get("role") == "admin" or task.get("owner_id") == user.get("id")</span></div>
               </div>
-              <figcaption class="muestra-pie">Así se ve una respuesta: cada cita te lleva a las líneas resaltadas que la sostienen.</figcaption>
+              <figcaption class="muestra-pie">Así se ve una respuesta: cada cita abre las líneas resaltadas que la sostienen.</figcaption>
             </figure>
 
             <div id="suggestionsWrap" class="sugerencias">
@@ -136,108 +132,72 @@
 
           <div id="history" class="historial"></div>
 
-          <!-- El turno en curso: la pregunta, las etapas y el resultado -->
+          <!-- El turno en curso: la pregunta, el progreso en una línea y la respuesta -->
           <article id="turn" class="turno" aria-labelledby="turnQuestion" hidden>
             <p id="turnQuestion" class="msg-usuario"></p>
             <div class="msg-asistente">
-              <ol id="stages" class="etapas" aria-label="Etapas de RAG">
-                <li class="etapa" data-stage="recuperar" data-state="idle">
-                  <span class="etapa-marca" aria-hidden="true">
-                    <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
-                    <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
-                    <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
-                  </span>
-                  <span class="etapa-cuerpo">
-                    <strong>Recuperar</strong>
-                    <span class="etapa-texto" data-default="Esperando la búsqueda">Esperando la búsqueda</span>
-                  </span>
-                </li>
-                <li class="etapa" data-stage="contexto" data-state="idle">
-                  <span class="etapa-marca" aria-hidden="true">
-                    <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
-                    <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
-                    <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
-                  </span>
-                  <span class="etapa-cuerpo">
-                    <strong>Armar el contexto</strong>
-                    <span class="etapa-texto" data-default="Junta tu pregunta y los fragmentos encontrados">Junta tu pregunta y los fragmentos encontrados</span>
-                  </span>
-                </li>
-                <li class="etapa" data-stage="responder" data-state="idle">
-                  <span class="etapa-marca" aria-hidden="true">
-                    <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
-                    <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
-                    <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
-                  </span>
-                  <span class="etapa-cuerpo">
-                    <strong>Responder con citas</strong>
-                    <span class="etapa-texto" data-default="El modelo cita cada fragmento que usa, o avisa que no hay evidencia">El modelo cita cada fragmento que usa, o avisa que no hay evidencia</span>
-                  </span>
-                </li>
-              </ol>
+              <details id="process" class="proceso" data-state="idle">
+                <summary><span class="proceso-icono" aria-hidden="true"></span><span id="processText">Esperando la búsqueda</span></summary>
+                <ol id="stages" class="etapas" aria-label="Etapas de RAG">
+                  <li class="etapa" data-stage="recuperar" data-state="idle">
+                    <span class="etapa-marca" aria-hidden="true">
+                      <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+                      <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+                      <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+                    </span>
+                    <span class="etapa-cuerpo">
+                      <strong>Recuperar</strong>
+                      <span class="etapa-texto" data-default="Esperando la búsqueda">Esperando la búsqueda</span>
+                    </span>
+                  </li>
+                  <li class="etapa" data-stage="contexto" data-state="idle">
+                    <span class="etapa-marca" aria-hidden="true">
+                      <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+                      <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+                      <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+                    </span>
+                    <span class="etapa-cuerpo">
+                      <strong>Armar el contexto</strong>
+                      <span class="etapa-texto" data-default="Junta tu pregunta y los fragmentos encontrados">Junta tu pregunta y los fragmentos encontrados</span>
+                    </span>
+                  </li>
+                  <li class="etapa" data-stage="responder" data-state="idle">
+                    <span class="etapa-marca" aria-hidden="true">
+                      <svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+                      <svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+                      <svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+                    </span>
+                    <span class="etapa-cuerpo">
+                      <strong>Responder con citas</strong>
+                      <span class="etapa-texto" data-default="El modelo cita cada fragmento que usa, o avisa que no hay evidencia">El modelo cita cada fragmento que usa, o avisa que no hay evidencia</span>
+                    </span>
+                  </li>
+                </ol>
+              </details>
 
               <div id="results" class="resultados" hidden>
                 <section id="answerStage" class="respuesta" tabindex="-1" aria-labelledby="answerTitle">
-                  <h2 id="answerTitle" class="respuesta-titulo">Resultado</h2>
-                  <p id="resultSummary" class="respuesta-resumen"></p>
+                  <h2 id="answerTitle" class="sr-only">Resultado</h2>
+                  <p id="resultSummary" class="nota-turno"></p>
                   <div id="answer" class="respuesta-cuerpo" hidden></div>
-
-                  <div id="comparison" class="comparacion" hidden>
-                    <h3 id="comparisonTitle" tabindex="-1">Qué cambió con la búsqueda híbrida</h3>
-                    <p id="comparisonSummary" class="comparacion-resumen"></p>
-                    <div class="tabla-envoltura" tabindex="0" role="region" aria-labelledby="comparisonTitle">
-                      <table class="comparacion-tabla">
-                        <caption class="sr-only">Posición de cada fragmento en la búsqueda por palabras y en la híbrida</caption>
-                        <thead>
-                          <tr>
-                            <th scope="col">Fragmento</th>
-                            <th scope="col" class="col-modo" data-mode="acotado">Por palabras</th>
-                            <th scope="col" class="col-modo" data-mode="completo">Híbrida</th>
-                          </tr>
-                        </thead>
-                        <tbody id="comparisonRows"></tbody>
-                      </table>
-                    </div>
-                    <p class="comparacion-nota">El número es la posición en cada búsqueda: 1 es el fragmento más parecido a tu pregunta. Solo los cinco primeros llegan al modelo. Para responder se usan los de la búsqueda híbrida.</p>
-                    <button id="backToLexical" type="button" class="boton-texto">Volver a la búsqueda por palabras</button>
-                  </div>
+                  <p id="hybridNote" class="nota-turno" hidden></p>
 
                   <div id="noModelPanel" class="aviso" hidden>
-                    <strong>Ya viste la primera mitad de RAG</strong>
-                    <p>Esta demo funciona solo con búsqueda: el servidor no tiene una clave de OpenAI. Los fragmentos de abajo son los que recibiría el modelo para responder. Para ver la respuesta con citas, corré el proyecto con tu propia clave.</p>
-                    <a href="https://github.com/NicolasIgles/codebase-explorer-rag#probar-en-local" target="_blank" rel="noopener noreferrer">Cómo correrlo en tu máquina</a>
+                    <p>Esta demo no tiene una clave de OpenAI, así que llega hasta la búsqueda: los fragmentos que encontró son los que recibiría el modelo para responder.</p>
+                    <a href="https://github.com/NicolasIgles/codebase-explorer-rag#probar-en-local" target="_blank" rel="noopener noreferrer">Cómo correrlo con tu clave</a>
                   </div>
 
                   <div id="sendPanel" class="permiso" hidden>
-                    <h3 id="contextTitle">Esto es lo que recibirá el modelo</h3>
-                    <div class="paquete">
-                      <div class="paquete-fila">
-                        <span class="paquete-rotulo">Tu pregunta</span>
-                        <p id="contextQuestion" class="paquete-pregunta"></p>
-                      </div>
-                      <div class="paquete-fila">
-                        <span id="contextCount" class="paquete-rotulo">Fragmentos</span>
-                        <div id="contextChips" class="paquete-fragmentos"></div>
-                      </div>
-                      <p id="contextSize" class="paquete-tamano"></p>
-                    </div>
-                    <details id="sendDetails" class="desplegable">
-                      <summary>Ver la pregunta y los fragmentos tal cual se envían</summary>
-                      <div id="sendPreview" class="contexto-texto" tabindex="0" aria-label="Pregunta y fragmentos que se envían al modelo"></div>
-                    </details>
-                    <details class="desplegable">
-                      <summary>Ver las instrucciones fijas que acompañan cada consulta</summary>
-                      <div id="instructionsPreview" class="contexto-texto" tabindex="0" aria-label="Instrucciones fijas para el modelo"></div>
-                    </details>
-                    <div class="permiso-pie">
-                      <p id="contextNote" class="contexto-nota">Nada sale de este servidor hasta que tocás el botón.</p>
+                    <p id="contextTitle" class="permiso-texto">Para responder, se envían a OpenAI tu pregunta y los fragmentos encontrados.</p>
+                    <p id="contextNote" class="contexto-nota">Nada sale de este servidor hasta que tocás el botón.</p>
+                    <div class="botonera">
                       <button id="answerButton" type="button" class="boton-principal">Enviar a OpenAI y responder</button>
+                      <button id="showContext" type="button" class="boton-texto">Ver qué se envía</button>
                     </div>
                   </div>
 
-
                   <div id="hybridPanel" class="permiso" hidden>
-                    <h3 id="hybridTitle">Búsqueda híbrida</h3>
+                    <p class="permiso-texto"><strong id="hybridTitle">Búsqueda híbrida</strong></p>
                     <p id="hybridSummary"></p>
                     <details class="desplegable"><summary id="hybridDetailsLabel">Ver qué se envía</summary><p id="hybridQuestion"></p><div id="scope" class="alcance"></div></details>
                     <div class="botonera">
@@ -247,24 +207,21 @@
                   </div>
 
                   <div id="translatePanel" class="permiso" hidden>
-                    <h3>Probar con la pregunta en inglés</h3>
-                    <p>El código del proyecto está escrito en inglés, así que una pregunta en castellano puede no compartir palabras con él. Podés traducirla con OpenAI y buscar de nuevo. Solo se envía tu pregunta, ningún archivo.</p>
-                    <details class="desplegable"><summary>Ver lo que se envía</summary><pre id="translatePreview" class="contexto-texto" tabindex="0" aria-label="Pregunta que se envía para traducir"></pre></details>
-                    <button id="translateButton" type="button" class="boton-secundario">Traducir la pregunta y buscar de nuevo</button>
+                    <p class="permiso-texto">El código del proyecto está en inglés y tu pregunta no comparte palabras con él. Puedo traducirla con OpenAI y buscar de nuevo. Solo se envía tu pregunta, ningún archivo.</p>
+                    <pre id="translatePreview" hidden></pre>
+                    <div class="botonera">
+                      <button id="translateButton" type="button" class="boton-secundario">Traducir y buscar de nuevo</button>
+                    </div>
                   </div>
 
-                  <div id="modeRow" class="modo" hidden>
-                    <span id="modeTag" class="modo-etiqueta" data-mode="acotado">Búsqueda por palabras</span>
-                    <button id="hybridButton" type="button" class="boton-secundario boton-hibrida">Comparar con la búsqueda híbrida (usa OpenAI)</button>
+                  <div class="acciones-turno">
+                    <button id="sourcesButton" type="button" class="accion accion-evidencia" aria-controls="evidence" aria-expanded="false" hidden>
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2"/><path d="M9.5 2.5v11"/></svg>
+                      <span id="sourcesButtonLabel">Ver la evidencia</span>
+                    </button>
+                    <button id="hybridButton" type="button" class="accion" hidden>Comparar con la búsqueda híbrida</button>
                   </div>
                 </section>
-
-                <section class="hallazgos" aria-labelledby="sourcesTitle">
-                  <h2 id="sourcesTitle" class="hallazgos-titulo">Lo que encontró la búsqueda <span id="resultCount"></span></h2>
-                  <div id="sources" class="fragmentos"></div>
-                </section>
-
-                <p id="resultFoot" class="pie-resultado"></p>
               </div>
             </div>
           </article>
@@ -284,12 +241,83 @@
             </button>
           </div>
           <div class="compositor-pie">
-            <p id="composerHelp">Enter busca y Mayús + Enter agrega una línea. La búsqueda por palabras no sale de este servidor.</p>
+            <p id="composerHelp" class="compositor-ayuda">Enter busca y Mayús + Enter agrega una línea. La búsqueda por palabras no sale de este servidor.</p>
             <p id="counter" class="contador" hidden></p>
           </div>
         </div>
       </form>
     </main>
+
+    <!-- Panel de evidencia: todo el detalle de la búsqueda, fuera del chat -->
+    <aside id="evidence" class="evidencia" aria-labelledby="evidenceTitle" hidden>
+      <div class="evidencia-cabeza">
+        <div>
+          <h2 id="evidenceTitle" tabindex="-1">Evidencia</h2>
+          <p id="evidenceSub" class="evidencia-sub">De tu última pregunta</p>
+        </div>
+        <button id="closeEvidence" type="button" class="dialogo-cerrar" aria-label="Cerrar la evidencia">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 4l10 10M14 4L4 14"/></svg>
+        </button>
+      </div>
+      <div id="evidenceBody" class="evidencia-cuerpo">
+        <div id="evidenceLive" class="evidencia-vista">
+          <div id="modeRow" class="modo" hidden>
+            <span id="modeTag" class="modo-etiqueta" data-mode="acotado">Búsqueda por palabras</span>
+          </div>
+
+          <div id="comparison" class="comparacion" hidden>
+            <h3 id="comparisonTitle" tabindex="-1">Qué cambió con la búsqueda híbrida</h3>
+            <p id="comparisonSummary" class="comparacion-resumen"></p>
+            <div class="tabla-envoltura" tabindex="0" role="region" aria-labelledby="comparisonTitle">
+              <table class="comparacion-tabla">
+                <caption class="sr-only">Posición de cada fragmento en la búsqueda por palabras y en la híbrida</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Fragmento</th>
+                    <th scope="col" class="col-modo" data-mode="acotado">Por palabras</th>
+                    <th scope="col" class="col-modo" data-mode="completo">Híbrida</th>
+                  </tr>
+                </thead>
+                <tbody id="comparisonRows"></tbody>
+              </table>
+            </div>
+            <p class="comparacion-nota">El número es la posición en cada búsqueda: 1 es el fragmento más parecido a tu pregunta. Solo los cinco primeros llegan al modelo. Para responder se usan los de la búsqueda híbrida.</p>
+            <button id="backToLexical" type="button" class="boton-texto">Volver a la búsqueda por palabras</button>
+          </div>
+
+          <section class="hallazgos" aria-labelledby="sourcesTitle">
+            <h3 id="sourcesTitle" class="hallazgos-titulo">Lo que encontró la búsqueda <span id="resultCount"></span></h3>
+            <div id="sources" class="fragmentos"></div>
+          </section>
+
+          <section id="contextSection" class="contexto-panel" aria-labelledby="contextHeading" hidden>
+            <h3 id="contextHeading" class="hallazgos-titulo">Qué recibe el modelo</h3>
+            <div class="paquete">
+              <div class="paquete-fila">
+                <span class="paquete-rotulo">Tu pregunta</span>
+                <p id="contextQuestion" class="paquete-pregunta"></p>
+              </div>
+              <div class="paquete-fila">
+                <span id="contextCount" class="paquete-rotulo">Fragmentos</span>
+                <div id="contextChips" class="paquete-fragmentos"></div>
+              </div>
+              <p id="contextSize" class="paquete-tamano"></p>
+            </div>
+            <details id="sendDetails" class="desplegable">
+              <summary>Ver la pregunta y los fragmentos tal cual se envían</summary>
+              <div id="sendPreview" class="contexto-texto" tabindex="0" aria-label="Pregunta y fragmentos que se envían al modelo"></div>
+            </details>
+            <details class="desplegable">
+              <summary>Ver las instrucciones fijas que acompañan cada consulta</summary>
+              <div id="instructionsPreview" class="contexto-texto" tabindex="0" aria-label="Instrucciones fijas para el modelo"></div>
+            </details>
+          </section>
+
+          <p id="resultFoot" class="pie-resultado"></p>
+        </div>
+        <div id="evidenceArchive" class="evidencia-vista" hidden></div>
+      </div>
+    </aside>
   </div>
 
   <!-- Guía: cómo funciona, los modos de búsqueda y qué sale del servidor -->

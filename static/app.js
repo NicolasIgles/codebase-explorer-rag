@@ -25,6 +25,22 @@ const ui = {
   turn: $("turn"),
   turnQuestion: $("turnQuestion"),
   searchLabel: $("searchLabel"),
+  process: $("process"),
+  processText: $("processText"),
+  hybridNote: $("hybridNote"),
+  sourcesButton: $("sourcesButton"),
+  sourcesButtonLabel: $("sourcesButtonLabel"),
+  showContext: $("showContext"),
+  evidence: $("evidence"),
+  evidenceBody: $("evidenceBody"),
+  evidenceTitle: $("evidenceTitle"),
+  evidenceSub: $("evidenceSub"),
+  evidenceLive: $("evidenceLive"),
+  evidenceArchive: $("evidenceArchive"),
+  closeEvidence: $("closeEvidence"),
+  contextSection: $("contextSection"),
+  contextHeading: $("contextHeading"),
+  composerHelp: $("composerHelp"),
   apiState: $("apiState"),
   menuButton: $("menuButton"),
   useExample: $("useExample"),
@@ -166,10 +182,22 @@ function setStage(name, state, text) {
   const label = stage.querySelector(".etapa-texto");
   stage.dataset.state = state;
   label.textContent = text || label.dataset.default;
+  updateProcess();
 }
 
 function resetStages() {
   ["recuperar", "contexto", "responder"].forEach(name => setStage(name, "idle"));
+  ui.process.open = false;
+}
+
+/* En el chat las tres etapas se resumen en una línea: la que está en curso, la que espera
+   tu autorización o la última que terminó. Al expandirla se ven las tres. */
+function updateProcess() {
+  const stages = Array.from(ui.stages.querySelectorAll(".etapa"));
+  let pick = stages.find(stage => stage.dataset.state === "active") || stages.find(stage => stage.dataset.state === "waiting");
+  if (!pick) pick = stages.filter(stage => !["idle", "skipped"].includes(stage.dataset.state)).pop();
+  ui.process.dataset.state = pick ? pick.dataset.state : "idle";
+  ui.processText.textContent = pick ? pick.querySelector(".etapa-texto").textContent : "Esperando la búsqueda";
 }
 
 /* ---------- fragmentos: líneas, coincidencias y relevancia ---------- */
@@ -326,6 +354,7 @@ function renderSources(sources, seconds) {
     "La búsqueda híbrida tardó " + formatSeconds(seconds) + ", incluido el cálculo del vector de tu pregunta en OpenAI." :
     "La búsqueda tardó " + formatSeconds(seconds) + " en este servidor.";
   updateTouched();
+  updateSourcesButton();
 }
 
 /* Columna: los archivos que tocó la última búsqueda, con los citados resaltados. */
@@ -374,12 +403,14 @@ function markCited(numbers) {
     if (isCited) card.querySelectorAll(".linea").forEach(line => line.classList.add("marcada"));
   });
   updateTouched();
+  updateSourcesButton();
 }
 
 function focusSource(number) {
   const card = $("fragmento-" + number);
   if (!card) return;
-  card.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+  openEvidence();
+  card.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
   replay(card, "destello");
   card.querySelectorAll(".linea").forEach(line => line.classList.remove("marcada"));
   void card.offsetWidth;
@@ -429,8 +460,8 @@ function renderAnswer(data) {
     ui.resultSummary.textContent = "";
     ui.resultSummary.hidden = true;
     ui.answer.append(abstentionBox(
-      "No hay evidencia para responder esto",
-      "Ninguno de los fragmentos encontrados contesta la pregunta. En lugar de inventar, el modelo prefirió no responder: es lo que tiene que hacer un buen sistema RAG."
+      "No hay evidencia para responder esto.",
+      "Ninguno de los fragmentos que encontró la búsqueda contesta la pregunta, así que el modelo prefirió no responder en lugar de inventar."
     ));
     ui.sourcesTitle.firstChild.textContent = "Lo más cercano que encontró ";
     markCited([]);
@@ -439,11 +470,10 @@ function renderAnswer(data) {
   } else {
     const citas = (data.citas || []).filter(n => n >= 1 && n <= total);
     ui.answerTitle.textContent = "Respuesta";
-    ui.resultSummary.hidden = false;
-    ui.resultSummary.textContent = "Basada en " + citas.length + " de " + plural(total, "fragmento encontrado", "fragmentos encontrados") + ". Tocá una cita para ver las líneas que la sostienen.";
+    ui.resultSummary.hidden = true;
     const text = el("p", "respuesta-texto", data.respuesta);
     const chips = el("p", "citas");
-    chips.append(el("span", "", citas.length === 1 ? "Fuente citada" : "Fuentes citadas"));
+    chips.append(el("span", "", citas.length === 1 ? "Fuente" : "Fuentes"));
     citas.forEach((number, i) => {
       const source = session.sources[number - 1];
       const chip = el("button", "cita", source.ruta.split("/").pop() + " " + shortPlace(source));
@@ -461,6 +491,7 @@ function renderAnswer(data) {
     ui.resultFoot.textContent += " Una cita dice de dónde salió algo, no garantiza que esté bien: revisá las líneas citadas.";
     announce("Respuesta lista. " + data.respuesta);
   }
+  ui.contextHeading.textContent = "Qué recibió el modelo";
   ui.answer.hidden = false;
   ui.answerStage.focus({ preventScroll: true });
   revealIfNeeded(ui.answerStage);
@@ -560,20 +591,16 @@ function serverPlace(source) {
 
 function abstentionBox(title, text) {
   const box = el("div", "abstencion");
-  box.append(el("h3", "", title), el("p", "", text));
-  const actions = el("div", "botonera");
-  const again = el("button", "boton-principal", "Hacer otra pregunta");
-  again.type = "button";
-  again.addEventListener("click", () => { ui.question.focus(); ui.question.select(); });
-  actions.append(again);
+  box.append(el("p", "abstencion-titulo", title), el("p", "", text));
   const good = session.suggestions.find(item => item.id === "codigo");
   if (good && session.selectedOrigin === "ejemplo") {
-    const example = el("button", "boton-secundario", "Ver una que sí tiene respuesta");
+    const actions = el("div", "acciones-turno");
+    const example = el("button", "accion", "Probar con una que sí tiene respuesta");
     example.type = "button";
     example.addEventListener("click", () => runSuggestion(good));
     actions.append(example);
+    box.append(actions);
   }
-  box.append(actions);
   return box;
 }
 
@@ -594,6 +621,12 @@ function clearResults() {
   ui.sources.replaceChildren();
   ui.resultFoot.textContent = "";
   ui.resultSummary.hidden = false;
+  ui.resultSummary.textContent = "";
+  ui.hybridNote.hidden = true;
+  ui.sourcesButton.hidden = true;
+  ui.contextSection.hidden = true;
+  ui.contextHeading.textContent = "Qué recibe el modelo";
+  showLiveEvidence();
   session.queryId = null;
   session.sources = [];
   session.cited = [];
@@ -612,33 +645,85 @@ function clearResults() {
    tocar sus citas, pero sus acciones (enviar, comparar, traducir) quedan en el turno nuevo. */
 function archiveTurn() {
   if (ui.turn.hidden) return;
+  const question = ui.turnQuestion.textContent;
   const copy = ui.turn.cloneNode(true);
   copy.removeAttribute("id");
   copy.removeAttribute("aria-labelledby");
-  copy.setAttribute("aria-label", "Pregunta anterior: " + ui.turnQuestion.textContent);
+  copy.setAttribute("aria-label", "Pregunta anterior: " + question);
   copy.classList.add("turno-archivado");
-  copy.querySelectorAll("[hidden], .permiso, .aviso, .modo, .botonera, .ver-completo, .comparacion .boton-texto").forEach(node => node.remove());
+  copy.querySelectorAll("[hidden], .permiso, .aviso, .acciones-turno").forEach(node => node.remove());
   copy.querySelectorAll("[id]").forEach(node => node.removeAttribute("id"));
   copy.querySelectorAll("[tabindex='-1']").forEach(node => node.removeAttribute("tabindex"));
+  const proceso = copy.querySelector(".proceso");
+  if (proceso) proceso.open = false;
 
-  const finds = copy.querySelector(".hallazgos");
-  const count = finds ? finds.querySelectorAll(".fragmento").length : 0;
-  if (finds && count) {
-    const wrap = el("details", "desplegable archivo-fragmentos");
-    wrap.append(el("summary", "", count === 1 ? "Ver el fragmento que encontró la búsqueda" : "Ver los " + count + " fragmentos que encontró la búsqueda"));
-    finds.querySelector(".hallazgos-titulo").remove();
-    finds.replaceWith(wrap);
-    wrap.append(finds);
-    copy.querySelectorAll(".cita").forEach(chip => chip.addEventListener("click", () => {
-      const card = copy.querySelector('.fragmento[data-n="' + chip.dataset.n + '"]');
-      if (!card) return;
-      wrap.open = true;
-      card.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
-    }));
-  } else if (finds) {
-    finds.remove();
+  /* La evidencia de esa pregunta queda guardada para volver a abrirla en el panel. */
+  const cards = ui.sources.querySelectorAll(".fragmento").length;
+  if (cards) {
+    const snapshot = ui.sources.cloneNode(true);
+    snapshot.removeAttribute("id");
+    snapshot.querySelectorAll(".ver-completo").forEach(node => node.remove());
+    snapshot.querySelectorAll("[id]").forEach(node => node.removeAttribute("id"));
+    const show = number => {
+      openArchivedEvidence(snapshot, question);
+      const card = number && snapshot.querySelector('.fragmento[data-n="' + number + '"]');
+      if (card) card.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+    };
+    const actions = el("div", "acciones-turno");
+    const button = el("button", "accion", cards === 1 ? "Ver el fragmento que encontró" : "Ver los " + cards + " fragmentos que encontró");
+    button.type = "button";
+    button.addEventListener("click", () => show(null));
+    actions.append(button);
+    copy.querySelector(".msg-asistente").append(actions);
+    copy.querySelectorAll(".cita").forEach(chip => chip.addEventListener("click", () => show(chip.dataset.n)));
   }
   ui.history.append(copy);
+}
+
+/* ---------- panel de evidencia ---------- */
+
+function showLiveEvidence() {
+  ui.evidenceLive.hidden = false;
+  ui.evidenceArchive.hidden = true;
+  ui.evidenceArchive.replaceChildren();
+  ui.evidenceSub.textContent = "De tu última pregunta";
+}
+
+function openEvidence(target, moveFocus) {
+  if (ui.evidenceLive.hidden) showLiveEvidence();
+  ui.evidence.hidden = false;
+  ui.app.classList.add("panel-abierto");
+  ui.sourcesButton.setAttribute("aria-expanded", "true");
+  if (target) target.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  if (moveFocus) ui.evidenceTitle.focus({ preventScroll: true });
+}
+
+function openArchivedEvidence(snapshot, question) {
+  ui.evidenceLive.hidden = true;
+  ui.evidenceArchive.hidden = false;
+  ui.evidenceArchive.replaceChildren(snapshot);
+  ui.evidenceSub.textContent = "De la pregunta «" + question + "»";
+  ui.evidence.hidden = false;
+  ui.app.classList.add("panel-abierto");
+  ui.evidenceBody.scrollTop = 0;
+}
+
+function closeEvidence() {
+  const hadFocus = ui.evidence.contains(document.activeElement);
+  ui.evidence.hidden = true;
+  ui.app.classList.remove("panel-abierto");
+  ui.sourcesButton.setAttribute("aria-expanded", "false");
+  showLiveEvidence();
+  if (hadFocus) (ui.sourcesButton.hidden ? ui.question : ui.sourcesButton).focus();
+}
+
+function updateSourcesButton() {
+  const count = session.sources.length;
+  const cited = session.cited.length;
+  ui.sourcesButton.hidden = !count;
+  ui.sourcesButtonLabel.textContent = cited ?
+    (cited === 1 ? "Ver la fuente citada" : "Ver las " + cited + " fuentes citadas") :
+    (count === 1 ? "Ver el fragmento encontrado" : "Ver los " + count + " fragmentos encontrados");
 }
 
 function resetThread() {
@@ -647,6 +732,8 @@ function resetThread() {
   ui.turn.hidden = true;
   clearResults();
   ui.welcome.hidden = false;
+  ui.composerHelp.hidden = false;
+  closeEvidence();
   ui.thread.scrollTop = 0;
 }
 
@@ -661,7 +748,7 @@ function showNextSteps(options) {
   ui.noModelPanel.hidden = true;
   ui.translatePanel.hidden = true;
   ui.resultSummary.hidden = false;
-  ui.modeRow.hidden = hybrid;
+  ui.modeRow.hidden = false;
   ui.modeTag.dataset.mode = hybrid ? "completo" : "acotado";
   ui.modeTag.textContent = hybrid ? "Búsqueda híbrida: palabras y significado" : "Búsqueda por palabras";
   ui.hybridButton.hidden = !session.modelAvailable || hybrid;
@@ -670,21 +757,19 @@ function showNextSteps(options) {
     setStage("recuperar", "done", plural(count, "fragmento encontrado", "fragmentos encontrados") + (hybrid ? ", con palabras y significado" : ", en este servidor"));
     ui.answerTitle.textContent = "Encontró " + plural(count, "fragmento");
     showContext();
-    ui.sendPanel.hidden = false;
+    ui.contextSection.hidden = false;
+    ui.resultSummary.hidden = true;
     if (session.modelAvailable) {
-      setStage("contexto", "waiting", "Revisá lo que recibiría el modelo");
-      ui.resultSummary.hidden = true;
-      ui.contextTitle.textContent = "Esto es lo que recibirá el modelo";
-      ui.contextNote.textContent = "Nada sale de este servidor hasta que tocás el botón.";
+      setStage("contexto", "waiting", "Esperando tu autorización para enviar a OpenAI");
+      ui.contextHeading.textContent = "Qué recibe el modelo";
+      ui.contextTitle.textContent = "Para responder, se envían a OpenAI tu pregunta y " + (count === 1 ? "el fragmento encontrado." : "los " + count + " fragmentos encontrados.");
       ui.answerButton.hidden = false;
+      ui.sendPanel.hidden = false;
     } else {
       setStage("contexto", "done", "Tu pregunta y " + plural(count, "fragmento") + ", listos para el modelo");
       setStage("responder", "skipped", "Necesita una clave de OpenAI en el servidor");
-      ui.resultSummary.hidden = true;
+      ui.contextHeading.textContent = "Qué recibiría el modelo";
       ui.noModelPanel.hidden = false;
-      ui.contextTitle.textContent = "Esto es lo que recibiría el modelo";
-      ui.contextNote.textContent = "En esta demo no se envía: el servidor no tiene una clave de OpenAI.";
-      ui.answerButton.hidden = true;
     }
     announce(plural(count, "fragmento encontrado", "fragmentos encontrados") + ".");
   } else {
@@ -694,12 +779,11 @@ function showNextSteps(options) {
     setStage("responder", "abstained", "No respondió, por falta de evidencia");
     ui.answerTitle.textContent = "Respuesta";
     ui.resultSummary.hidden = true;
-    let text = (hybrid ?
-      "La búsqueda híbrida no encontró nada que se parezca lo suficiente a tu pregunta." :
-      "La búsqueda por palabras no encontró ninguna parte del proyecto que comparta palabras con tu pregunta.") +
-      " Sin evidencia, el sistema no responde: prefiere no inventar.";
-    if (!hybrid && session.modelAvailable) text += " Si creés que la respuesta sí está, probá la búsqueda híbrida, que también busca por significado.";
-    ui.answer.replaceChildren(abstentionBox("No hay evidencia para responder esto", text));
+    let text = hybrid ?
+      "Ninguna parte del proyecto se parece lo suficiente a tu pregunta, y sin evidencia prefiero no inventar." :
+      "Ninguna parte del proyecto comparte palabras con tu pregunta, y sin evidencia prefiero no inventar.";
+    if (!hybrid && session.modelAvailable) text += " Si creés que la respuesta está, la búsqueda híbrida también busca por significado.";
+    ui.answer.replaceChildren(abstentionBox("No encontré evidencia para responder esto.", text));
     ui.answer.hidden = false;
     ui.sourcesTitle.firstChild.textContent = "Lo que encontró la búsqueda ";
     if (!hybrid && session.modelAvailable && session.question.includes("¿")) {
@@ -798,6 +882,7 @@ async function search() {
   archiveTurn();
   clearResults();
   ui.welcome.hidden = true;
+  ui.composerHelp.hidden = true;
   ui.turnQuestion.textContent = question;
   ui.turn.hidden = false;
   ui.turn.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
@@ -833,7 +918,7 @@ async function generateAnswer() {
     });
     renderAnswer(answer);
   } catch (error) {
-    setStage("contexto", "waiting", "Revisá lo que recibiría el modelo");
+    setStage("contexto", "waiting", "Esperando tu autorización para enviar a OpenAI");
     setStage("responder", "idle");
     status("No se pudo generar la respuesta: " + error.message, true);
   } finally { setBusy(false); }
@@ -875,8 +960,8 @@ async function prepareHybrid() {
     ui.hybridQuestion.textContent = "Pregunta que se envía: «" + session.question + "»";
     ui.indexButton.textContent = prepared ? "Enviar la pregunta y comparar" : "Enviar los archivos y comparar";
     ui.hybridSummary.textContent = prepared ?
-      "La búsqueda híbrida busca por palabras y también por significado. Después vas a ver, fragmento por fragmento, qué cambió frente a la búsqueda por palabras. El índice del ejemplo ya está preparado: solo se envía tu pregunta a OpenAI para calcular su vector, los archivos no." :
-      "La búsqueda híbrida busca por palabras y también por significado. Después vas a ver, fragmento por fragmento, qué cambió frente a la búsqueda por palabras. Para eso se envía a OpenAI el texto permitido de tus archivos, para calcular sus vectores, y tu pregunta. Revisá el detalle antes de autorizar.";
+      "Busca por palabras y también por significado, y te muestra qué cambió. Solo se envía tu pregunta a OpenAI para calcular su vector; los archivos del ejemplo no." :
+      "Busca por palabras y también por significado, y te muestra qué cambió. Para eso se envían a OpenAI tu pregunta y el texto permitido de tus archivos, para calcular sus vectores.";
     session.previousActions = {
       send: !ui.sendPanel.hidden,
       noModel: !ui.noModelPanel.hidden,
@@ -933,8 +1018,10 @@ async function runHybrid() {
     renderSources(query.fuentes, query.tiempos.recuperacion);
     showNextSteps({ keepPosition: true });
     renderComparison(previousSources, query.fuentes);
+    ui.hybridNote.textContent = ui.comparisonSummary.textContent + " El detalle, fragmento por fragmento, está en la evidencia.";
+    ui.hybridNote.hidden = false;
+    openEvidence(ui.comparison);
     ui.comparisonTitle.focus({ preventScroll: true });
-    ui.comparison.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
     announce(ui.comparisonSummary.textContent);
     if (oldId) api("/colecciones/" + oldId, { method: "DELETE" }).catch(() => {});
   } catch (error) {
@@ -1154,8 +1241,17 @@ ui.menuButton.addEventListener("click", () => setSidebar(true));
 ui.closeSidebar.addEventListener("click", () => setSidebar(false));
 ui.scrim.addEventListener("click", () => setSidebar(false));
 document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && ui.app.classList.contains("lateral-abierta")) setSidebar(false);
+  if (event.key !== "Escape" || document.querySelector("dialog[open]")) return;
+  if (ui.app.classList.contains("lateral-abierta")) setSidebar(false);
+  else if (!ui.evidence.hidden) closeEvidence();
 });
+
+ui.sourcesButton.addEventListener("click", () => {
+  if (!ui.evidence.hidden && !ui.evidenceLive.hidden) closeEvidence();
+  else openEvidence(null, true);
+});
+ui.showContext.addEventListener("click", () => openEvidence(ui.contextSection, true));
+ui.closeEvidence.addEventListener("click", closeEvidence);
 narrow.addEventListener("change", () => { if (!narrow.matches) setSidebar(false); syncInert(); });
 syncInert();
 
