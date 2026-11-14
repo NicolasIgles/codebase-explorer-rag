@@ -5,6 +5,9 @@ import re
 from io import BytesIO
 from pathlib import Path
 
+from pdfminer.high_level import extract_pages
+from pdfminer.layout import LAParams, LTTextContainer
+from pdfminer.pdfparser import PDFSyntaxError
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
@@ -32,13 +35,29 @@ def archivos_documento(carpeta, avisos=None):
                 yield Path(actual) / nombre
 
 
-def bloques(lineas, titulo_inicial):
-    """Entrega bloques con ubicación estable dentro de secciones."""
+def titulo_en_mayusculas(linea):
+    """Títulos de plantillas PDF: un renglón corto todo en mayúsculas, como EXPERIENCIA o SKILLS."""
+    texto = linea.strip()
+    letras = [c for c in texto if c.isalpha()]
+    return (
+        3 <= len(texto) <= 40 and len(letras) >= 3
+        and all(c.isupper() for c in letras)
+        and not texto.endswith((".", ":", ",")) and not texto.startswith(("•", "-", "*"))
+    )
+
+
+def bloques(lineas, titulo_inicial, titulos_mayusculas=False):
+    """Entrega bloques con ubicación estable dentro de secciones.
+
+    Los renglones en blanco no cuentan para el límite de renglones de un bloque.
+    """
     secciones = []
     titulo = titulo_inicial
     inicio = 1
     for numero, linea in enumerate(lineas, start=1):
         encabezado = re.match(r"^#{1,6}\s+(.+?)\s*#*\s*$", linea)
+        if not encabezado and titulos_mayusculas and titulo_en_mayusculas(linea):
+            encabezado = re.match(r"^\s*(.+?)\s*$", linea)
         if encabezado:
             if numero > inicio:
                 secciones.append((inicio, numero - 1, titulo))
@@ -51,11 +70,13 @@ def bloques(lineas, titulo_inicial):
         while actual <= ultimo:
             fin = actual
             caracteres = 0
-            while fin <= ultimo and fin - actual < MAX_LINEAS_BLOQUE:
+            renglones = 0
+            while fin <= ultimo and renglones < MAX_LINEAS_BLOQUE:
                 largo = len(lineas[fin - 1]) + 1
                 if fin > actual and caracteres + largo > MAX_CARACTERES_BLOQUE:
                     break
                 caracteres += largo
+                renglones += bool(lineas[fin - 1].strip())
                 fin += 1
             yield actual, fin - 1, titulo
             actual = fin
@@ -66,7 +87,7 @@ def fragmentos_textuales(texto, ruta, extension, pagina=None, desplazamiento=0):
     resultado = []
     if not any(linea.strip() for linea in lineas):
         return resultado
-    for inicio_local, fin_local, titulo in bloques(lineas, Path(ruta).stem):
+    for inicio_local, fin_local, titulo in bloques(lineas, Path(ruta).stem, titulos_mayusculas=extension == ".pdf"):
         contenido = "\n".join(lineas[inicio_local - 1:fin_local]).strip()
         if not contenido:
             continue
@@ -108,6 +129,48 @@ def fragmentos_textuales(texto, ruta, extension, pagina=None, desplazamiento=0):
     return resultado
 
 
+GLIFO_SIN_MAPA = re.compile(r"\(cid:\d+\)")
+
+
+def unir_letras_espaciadas(linea):
+    """Convierte "E X P E R I E N C I A   L A B O R A L" en "EXPERIENCIA LABORAL".
+
+    Con espaciado entre letras (tracking), pdfminer separa cada carácter con un espacio y deja
+    tres o más entre palabras. Solo se toca un renglón cuando casi todo son caracteres sueltos.
+    """
+    piezas = [pieza for pieza in linea.split(" ") if pieza]
+    if len(piezas) < 3 or sum(len(pieza) == 1 for pieza in piezas) < 0.9 * len(piezas):
+        return linea
+    palabras = re.split(r" {2,}", linea.strip())
+    return " ".join(palabra.replace(" ", "") for palabra in palabras)
+
+
+def limpiar_texto_pdf(texto):
+    """Repara artefactos típicos de plantillas: letras espaciadas y viñetas sin mapa Unicode."""
+    texto = GLIFO_SIN_MAPA.sub("•", texto)
+    return "\n".join(unir_letras_espaciadas(linea) for linea in texto.split("\n"))
+
+
+def textos_por_pagina(contenido, maximo):
+    """Reconstruye renglones por posición, también cuando el PDF dibuja cada palabra por separado.
+
+    pypdf sigue el orden del archivo y, en PDFs exportados por editores visuales, entrega una palabra
+    por renglón. pdfminer agrupa caracteres por cercanía y separa columnas en bloques.
+    Devuelve None si pdfminer no puede leer el archivo, para volver a pypdf.
+    """
+    try:
+        paginas = []
+        for pagina in extract_pages(BytesIO(contenido), maxpages=maximo, laparams=LAParams()):
+            bloques_texto = [
+                elemento.get_text().strip("\n")
+                for elemento in pagina if isinstance(elemento, LTTextContainer)
+            ]
+            paginas.append(limpiar_texto_pdf("\n\n".join(b for b in bloques_texto if b.strip())))
+        return paginas
+    except (PDFSyntaxError, OSError, ValueError, KeyError, TypeError, AssertionError, IndexError):
+        return None
+
+
 def fragmentos_desde_bytes(nombre, contenido, avisos=None):
     """Extrae una carga ya limitada en tamaño; nombre debe ser relativo y seguro."""
     extension = Path(nombre).suffix.lower()
@@ -123,11 +186,14 @@ def fragmentos_desde_bytes(nombre, contenido, avisos=None):
                 return []
             resultado = []
             desplazamiento = 0
+            reconstruidos = textos_por_pagina(contenido, MAX_PAGINAS_PDF) or []
             for numero, pagina in enumerate(lector.pages, start=1):
                 if numero > MAX_PAGINAS_PDF:
                     registrar_aviso(avisos, f"{nombre}: se omitieron páginas después de {MAX_PAGINAS_PDF}")
                     break
-                texto = pagina.extract_text() or ""
+                texto = reconstruidos[numero - 1] if numero <= len(reconstruidos) else ""
+                if not texto.strip():
+                    texto = limpiar_texto_pdf(pagina.extract_text() or "")
                 resultado.extend(
                     fragmentos_textuales(texto, nombre, extension, numero, desplazamiento)
                 )

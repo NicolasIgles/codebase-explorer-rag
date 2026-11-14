@@ -1,0 +1,19 @@
+[
+  {"id": "c_word_redis", "archivo": "cv_word.pdf", "pregunta": "¿Conoce Redis?", "esperado": ["Redis"]},
+  {"id": "c_word_portugues", "archivo": "cv_word.pdf", "pregunta": "¿Habla portugués?", "esperado": ["Portugués básico"]},
+  {"id": "c_word_nextjs", "archivo": "cv_word.pdf", "pregunta": "¿Usó nextjs?", "esperado": ["Next.js"]},
+  {"id": "c_word_contacto", "archivo": "cv_word.pdf", "pregunta": "¿Cómo la contacto por mail?", "esperado": ["martina.gomez.dev@correo.com"]},
+  {"id": "c_word_pruebas", "archivo": "cv_word.pdf", "pregunta": "¿Qué herramienta usó para pruebas end-to-end?", "esperado": ["Playwright"]},
+  {"id": "c_col_tableau", "archivo": "cv_dos_columnas.pdf", "pregunta": "¿Sabe usar tableau?", "esperado": ["Tableau"]},
+  {"id": "c_col_master", "archivo": "cv_dos_columnas.pdf", "pregunta": "¿Tiene un máster?", "esperado": ["Máster en Big Data"]},
+  {"id": "c_col_hobbies", "archivo": "cv_dos_columnas.pdf", "pregunta": "¿Qué intereses tiene?", "esperado": ["Ciclismo"]},
+  {"id": "c_col_ingles", "archivo": "cv_dos_columnas.pdf", "pregunta": "¿Qué nivel de inglés tiene?", "esperado": ["Inglés — B2"]},
+  {"id": "c_esp_flutter", "archivo": "cv_espaciado.pdf", "pregunta": "Has he used Flutter?", "esperado": ["Flutter"]},
+  {"id": "c_esp_phone", "archivo": "cv_espaciado.pdf", "pregunta": "What is his phone number?", "esperado": ["+44 7700 900123"]},
+  {"id": "c_esp_volunteer", "archivo": "cv_espaciado.pdf", "pregunta": "Does he do any volunteering?", "esperado": ["Black Girls Code"]},
+  {"id": "c_canva_frances", "archivo": "cv_canva.pdf", "pregunta": "¿Habla francés?", "esperado": ["Francés básico"]},
+  {"id": "c_canva_telefono", "archivo": "cv_canva.pdf", "pregunta": "¿Tiene un número de celular?", "esperado": ["+52 55 5555 0147"]},
+  {"id": "c_canva_figma", "archivo": "cv_canva.pdf", "pregunta": "¿Sabe figma?", "esperado": ["Figma"]},
+  {"id": "c_canva_ux", "archivo": "cv_canva.pdf", "pregunta": "¿Qué experiencia tiene en UX?", "esperado": ["Diseñadora UX Senior"]},
+  {"id": "c_canva_sin_python", "archivo": "cv_canva.pdf", "pregunta": "¿Programa en Python?", "esperado": []}
+]
