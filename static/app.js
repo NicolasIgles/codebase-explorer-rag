@@ -41,6 +41,8 @@ const ui = {
   contextSection: $("contextSection"),
   contextHeading: $("contextHeading"),
   composerHelp: $("composerHelp"),
+  consentNote: $("consentNote"),
+  revokeConsent: $("revokeConsent"),
   apiState: $("apiState"),
   menuButton: $("menuButton"),
   useExample: $("useExample"),
@@ -116,6 +118,32 @@ const session = {
 };
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const scrollBehavior = () => (reduceMotion.matches ? "auto" : "smooth");
+
+/* ---------- permiso para enviar a OpenAI ----------
+   Se pide la primera vez en la sesión del navegador. Vale por separado para el ejemplo y para
+   tus archivos, y se vuelve a pedir si cambiás los archivos: es otro contenido el que sale. */
+
+const CONSENT_KEY = "codebase-explorer:envio-autorizado";
+
+function consentGiven(origin) {
+  try { return sessionStorage.getItem(CONSENT_KEY + ":" + origin) === "si"; }
+  catch { return false; }
+}
+
+function setConsent(origin, value) {
+  try {
+    if (value) sessionStorage.setItem(CONSENT_KEY + ":" + origin, "si");
+    else sessionStorage.removeItem(CONSENT_KEY + ":" + origin);
+  } catch { /* Sin sessionStorage, se pregunta cada vez. */ }
+  updateConsentNote();
+}
+
+function updateConsentNote() {
+  if (!ui.consentNote) return;
+  const given = session.modelAvailable && consentGiven(session.selectedOrigin);
+  ui.consentNote.hidden = !given;
+  if (session.modelAvailable) ui.apiState.textContent = given ? "Responde con OpenAI" : "Responde con OpenAI cuando lo autorizás";
+}
 
 /* ---------- utilidades ---------- */
 
@@ -205,6 +233,7 @@ function updateProcess() {
   const stages = Array.from(ui.stages.querySelectorAll(".etapa"));
   let pick = stages.find(stage => stage.dataset.state === "active") || stages.find(stage => stage.dataset.state === "waiting");
   if (!pick) pick = stages.filter(stage => !["idle", "skipped"].includes(stage.dataset.state)).pop();
+  if (!pick) pick = stages.filter(stage => stage.dataset.state === "skipped").pop();
   ui.process.dataset.state = pick ? pick.dataset.state : "idle";
   ui.processText.textContent = pick ? pick.querySelector(".etapa-texto").textContent : "Esperando la búsqueda";
 }
@@ -643,6 +672,7 @@ function clearResults() {
   session.matchQuestion = null;
   session.previousActions = null;
   session.previousKeys = null;
+  session.autoAnswer = false;
   ui.answerButton.hidden = false;
   ui.touchedWrap.hidden = true;
   ui.touchedFiles.replaceChildren();
@@ -768,7 +798,11 @@ function showNextSteps(options) {
     showContext();
     ui.contextSection.hidden = false;
     ui.resultSummary.hidden = true;
-    if (session.modelAvailable) {
+    if (session.modelAvailable && consentGiven(session.selectedOrigin)) {
+      ui.contextHeading.textContent = "Qué recibe el modelo";
+      ui.contextTitle.textContent = "Para responder, se envían a OpenAI tu pregunta y " + (count === 1 ? "el fragmento encontrado." : "los " + count + " fragmentos encontrados.");
+      session.autoAnswer = true;
+    } else if (session.modelAvailable) {
       setStage("contexto", "waiting", "Esperando tu autorización para enviar a OpenAI");
       ui.contextHeading.textContent = "Qué recibe el modelo";
       ui.contextTitle.textContent = "Para responder, se envían a OpenAI tu pregunta y " + (count === 1 ? "el fragmento encontrado." : "los " + count + " fragmentos encontrados.");
@@ -914,6 +948,13 @@ async function search() {
     setStage("recuperar", "skipped", "No se pudo buscar");
     status(error.message, true);
   } finally { setBusy(false); }
+  answerIfAuthorized();
+}
+
+function answerIfAuthorized() {
+  if (!session.autoAnswer) return;
+  session.autoAnswer = false;
+  generateAnswer();
 }
 
 async function generateAnswer() {
@@ -929,6 +970,8 @@ async function generateAnswer() {
   } catch (error) {
     setStage("contexto", "waiting", "Esperando tu autorización para enviar a OpenAI");
     setStage("responder", "idle");
+    ui.answerButton.hidden = false;
+    ui.sendPanel.hidden = false;
     status("No se pudo generar la respuesta: " + error.message, true);
   } finally { setBusy(false); }
 }
@@ -954,6 +997,7 @@ async function translateQuestion() {
     setStage("recuperar", "done", "Ningún fragmento coincide");
     status("No se pudo traducir la pregunta: " + error.message, true);
   } finally { setBusy(false); }
+  answerIfAuthorized();
 }
 
 async function prepareHybrid() {
@@ -1039,6 +1083,7 @@ async function runHybrid() {
     showNextSteps({ keepPosition: true });
     status("No se pudo hacer la búsqueda híbrida: " + error.message, true);
   } finally { setBusy(false); }
+  answerIfAuthorized();
 }
 
 async function cancelHybrid() {
@@ -1084,6 +1129,7 @@ function describeProject() {
     (names.length ? "Preguntá sobre tus archivos" : "Primero elegí tus archivos") :
     "Escribí tu pregunta";
   ui.suggestionsWrap.hidden = upload;
+  updateConsentNote();
   ui.uploadHint.hidden = !upload || names.length > 0;
   autosize();
 }
@@ -1164,6 +1210,7 @@ ui.useExample.addEventListener("click", () => chooseOrigin("ejemplo"));
 ui.useUpload.addEventListener("click", () => chooseOrigin("carga"));
 ui.uploadFiles.addEventListener("change", () => {
   if (session.origin === "carga") session.mode = null;
+  setConsent("carga", false);
   resetThread();
   renderFileList();
   ui.uploadSummary.textContent = filesSummary();
@@ -1213,7 +1260,14 @@ ui.question.addEventListener("input", () => {
   autosize();
   if (!ui.status.hidden && !session.busy) status("", false);
 });
-ui.answerButton.addEventListener("click", generateAnswer);
+ui.answerButton.addEventListener("click", () => {
+  setConsent(session.selectedOrigin, true);
+  generateAnswer();
+});
+ui.revokeConsent.addEventListener("click", () => {
+  setConsent(session.selectedOrigin, false);
+  announce("Antes de cada envío a OpenAI vas a ver qué se envía y confirmarlo.");
+});
 ui.translateButton.addEventListener("click", translateQuestion);
 ui.hybridButton.addEventListener("click", prepareHybrid);
 ui.indexButton.addEventListener("click", runHybrid);
@@ -1303,6 +1357,7 @@ async function initialize() {
     session.suggestions = questions;
     ui.apiState.dataset.model = state.modelo_disponible ? "si" : "no";
     ui.apiState.textContent = state.modelo_disponible ? "Responde con OpenAI cuando lo autorizás" : "Solo búsqueda: el servidor no tiene clave de OpenAI";
+    updateConsentNote();
     const visible = questions.filter(item => SUGERENCIAS_VISIBLES.includes(item.id));
     (visible.length ? visible : questions).forEach(item => {
       const without = item.id === "abstencion";

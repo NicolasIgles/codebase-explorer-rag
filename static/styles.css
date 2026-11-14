@@ -130,6 +130,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .modo-demo { display: flex; align-items: center; gap: 10px; padding: 8px 6px; font-size: 14px; color: var(--niebla); }
 .modo-demo::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--niebla); }
 .modo-demo[data-model="si"]::before { background: #3DD6B0; }
+.permiso-sesion { display: grid; gap: 2px; margin: 0 0 6px; padding: 10px 12px; font-size: 14px; line-height: 1.45; color: var(--niebla); background: var(--tinta-alta); border: 1px solid var(--tinta-borde); border-radius: 10px; }
+.permiso-sesion .boton-lateral { min-height: 32px; padding: 0; font-size: 14px; }
 .enlace-lateral { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 6px; font-size: 15px; font-weight: 700; color: var(--nieve); background: none; border: 0; border-radius: 8px; text-decoration: none; }
 .enlace-lateral svg { color: var(--niebla); }
 .enlace-lateral:hover { background: rgba(255, 255, 255, .05); }
