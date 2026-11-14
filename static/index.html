@@ -9,8 +9,8 @@
   <meta name="description" content="Un laboratorio de RAG: hacé una pregunta sobre un proyecto de código, mirá qué fragmentos encuentra la búsqueda y cómo el modelo responde citándolos.">
   <link rel="preload" href="/assets/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/atkinson-hyperlegible-next-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/styles.css?v=4">
-  <script defer src="/assets/app.js?v=4"></script>
+  <link rel="stylesheet" href="/assets/styles.css?v=6">
+  <script defer src="/assets/app.js?v=6"></script>
 </head>
 <body>
   <a class="skip-link" href="#question">Ir a la pregunta</a>
@@ -77,6 +77,10 @@
 
       <div class="lateral-pie">
         <p id="apiState" class="modo-demo">Conectando con el servidor…</p>
+        <div id="consentNote" class="permiso-sesion" hidden>
+          <p>En esta sesión ya autorizaste enviar tus preguntas y los fragmentos a OpenAI.</p>
+          <button id="revokeConsent" type="button" class="boton-lateral">Confirmar cada envío</button>
+        </div>
         <button id="openGuide" type="button" class="enlace-lateral">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="7"/><path d="M7 7a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9V11M9 13.5v.01"/></svg>
           Cómo funciona RAG
@@ -189,7 +193,7 @@
 
                   <div id="sendPanel" class="permiso" hidden>
                     <p id="contextTitle" class="permiso-texto">Para responder, se envían a OpenAI tu pregunta y los fragmentos encontrados.</p>
-                    <p id="contextNote" class="contexto-nota">Nada sale de este servidor hasta que tocás el botón.</p>
+                    <p id="contextNote" class="contexto-nota">Nada sale de este servidor hasta que tocás el botón. Te lo pregunto solo esta vez: en el resto de la sesión, las respuestas se envían sin confirmar.</p>
                     <div class="botonera">
                       <button id="answerButton" type="button" class="boton-principal">Enviar a OpenAI y responder</button>
                       <button id="showContext" type="button" class="boton-texto">Ver qué se envía</button>

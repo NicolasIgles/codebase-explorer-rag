@@ -41,6 +41,8 @@ const ui = {
   contextSection: $("contextSection"),
   contextHeading: $("contextHeading"),
   composerHelp: $("composerHelp"),
+  consentNote: $("consentNote"),
+  revokeConsent: $("revokeConsent"),
   apiState: $("apiState"),
   menuButton: $("menuButton"),
   useExample: $("useExample"),
@@ -117,6 +119,32 @@ const session = {
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const scrollBehavior = () => (reduceMotion.matches ? "auto" : "smooth");
 
+/* ---------- permiso para enviar a OpenAI ----------
+   Se pide la primera vez en la sesión del navegador. Vale por separado para el ejemplo y para
+   tus archivos, y se vuelve a pedir si cambiás los archivos: es otro contenido el que sale. */
+
+const CONSENT_KEY = "codebase-explorer:envio-autorizado";
+
+function consentGiven(origin) {
+  try { return sessionStorage.getItem(CONSENT_KEY + ":" + origin) === "si"; }
+  catch { return false; }
+}
+
+function setConsent(origin, value) {
+  try {
+    if (value) sessionStorage.setItem(CONSENT_KEY + ":" + origin, "si");
+    else sessionStorage.removeItem(CONSENT_KEY + ":" + origin);
+  } catch { /* Sin sessionStorage, se pregunta cada vez. */ }
+  updateConsentNote();
+}
+
+function updateConsentNote() {
+  if (!ui.consentNote) return;
+  const given = session.modelAvailable && consentGiven(session.selectedOrigin);
+  ui.consentNote.hidden = !given;
+  if (session.modelAvailable) ui.apiState.textContent = given ? "Responde con OpenAI" : "Responde con OpenAI cuando lo autorizás";
+}
+
 /* ---------- utilidades ---------- */
 
 function el(tag, className, text) {
@@ -156,17 +184,26 @@ function status(message, error) {
   ui.status.setAttribute("role", error ? "alert" : "status");
   ui.status.hidden = !message;
   if (message && error) {
-    ui.status.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
     ui.status.focus({ preventScroll: true });
   }
 }
 
-/* El hilo de la conversación es el contenedor con scroll, no la ventana. */
+/* Desplaza solo el contenedor indicado (el hilo, el panel o la guía), nunca la página:
+   scrollIntoView también movería los contenedores de afuera. */
+function scrollInside(container, node, block) {
+  const view = container.getBoundingClientRect();
+  const box = node.getBoundingClientRect();
+  if (block === "nearest" && box.top >= view.top && box.bottom <= view.bottom) return;
+  let top = container.scrollTop + (box.top - view.top) - 12;
+  if (block === "nearest" && box.bottom > view.bottom && box.height < view.height)
+    top = container.scrollTop + (box.bottom - view.bottom) + 12;
+  container.scrollTo({ top: Math.max(0, top), behavior: scrollBehavior() });
+}
+
 function revealIfNeeded(node) {
   const box = node.getBoundingClientRect();
   const view = ui.thread.getBoundingClientRect();
-  if (box.top < view.top || box.top > view.top + view.height * 0.7)
-    node.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  if (box.top < view.top || box.top > view.top + view.height * 0.7) scrollInside(ui.thread, node, "start");
 }
 
 function replay(node, className) {
@@ -196,6 +233,7 @@ function updateProcess() {
   const stages = Array.from(ui.stages.querySelectorAll(".etapa"));
   let pick = stages.find(stage => stage.dataset.state === "active") || stages.find(stage => stage.dataset.state === "waiting");
   if (!pick) pick = stages.filter(stage => !["idle", "skipped"].includes(stage.dataset.state)).pop();
+  if (!pick) pick = stages.filter(stage => stage.dataset.state === "skipped").pop();
   ui.process.dataset.state = pick ? pick.dataset.state : "idle";
   ui.processText.textContent = pick ? pick.querySelector(".etapa-texto").textContent : "Esperando la búsqueda";
 }
@@ -410,7 +448,7 @@ function focusSource(number) {
   const card = $("fragmento-" + number);
   if (!card) return;
   openEvidence();
-  card.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  scrollInside(ui.evidenceBody, card, "start");
   replay(card, "destello");
   card.querySelectorAll(".linea").forEach(line => line.classList.remove("marcada"));
   void card.offsetWidth;
@@ -634,6 +672,7 @@ function clearResults() {
   session.matchQuestion = null;
   session.previousActions = null;
   session.previousKeys = null;
+  session.autoAnswer = false;
   ui.answerButton.hidden = false;
   ui.touchedWrap.hidden = true;
   ui.touchedFiles.replaceChildren();
@@ -667,7 +706,7 @@ function archiveTurn() {
     const show = number => {
       openArchivedEvidence(snapshot, question);
       const card = number && snapshot.querySelector('.fragmento[data-n="' + number + '"]');
-      if (card) card.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+      if (card) scrollInside(ui.evidenceBody, card, "start");
     };
     const actions = el("div", "acciones-turno");
     const button = el("button", "accion", cards === 1 ? "Ver el fragmento que encontró" : "Ver los " + cards + " fragmentos que encontró");
@@ -694,7 +733,7 @@ function openEvidence(target, moveFocus) {
   ui.evidence.hidden = false;
   ui.app.classList.add("panel-abierto");
   ui.sourcesButton.setAttribute("aria-expanded", "true");
-  if (target) target.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  if (target) scrollInside(ui.evidenceBody, target, "start");
   if (moveFocus) ui.evidenceTitle.focus({ preventScroll: true });
 }
 
@@ -759,7 +798,11 @@ function showNextSteps(options) {
     showContext();
     ui.contextSection.hidden = false;
     ui.resultSummary.hidden = true;
-    if (session.modelAvailable) {
+    if (session.modelAvailable && consentGiven(session.selectedOrigin)) {
+      ui.contextHeading.textContent = "Qué recibe el modelo";
+      ui.contextTitle.textContent = "Para responder, se envían a OpenAI tu pregunta y " + (count === 1 ? "el fragmento encontrado." : "los " + count + " fragmentos encontrados.");
+      session.autoAnswer = true;
+    } else if (session.modelAvailable) {
       setStage("contexto", "waiting", "Esperando tu autorización para enviar a OpenAI");
       ui.contextHeading.textContent = "Qué recibe el modelo";
       ui.contextTitle.textContent = "Para responder, se envían a OpenAI tu pregunta y " + (count === 1 ? "el fragmento encontrado." : "los " + count + " fragmentos encontrados.");
@@ -885,7 +928,7 @@ async function search() {
   ui.composerHelp.hidden = true;
   ui.turnQuestion.textContent = question;
   ui.turn.hidden = false;
-  ui.turn.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  scrollInside(ui.thread, ui.turn, "start");
   setBusy(true);
   setStage("recuperar", "active", session.selectedOrigin === "carga" ? "Preparando tus archivos y buscando…" : "Buscando en el código y los documentos…");
   try {
@@ -905,6 +948,13 @@ async function search() {
     setStage("recuperar", "skipped", "No se pudo buscar");
     status(error.message, true);
   } finally { setBusy(false); }
+  answerIfAuthorized();
+}
+
+function answerIfAuthorized() {
+  if (!session.autoAnswer) return;
+  session.autoAnswer = false;
+  generateAnswer();
 }
 
 async function generateAnswer() {
@@ -920,6 +970,8 @@ async function generateAnswer() {
   } catch (error) {
     setStage("contexto", "waiting", "Esperando tu autorización para enviar a OpenAI");
     setStage("responder", "idle");
+    ui.answerButton.hidden = false;
+    ui.sendPanel.hidden = false;
     status("No se pudo generar la respuesta: " + error.message, true);
   } finally { setBusy(false); }
 }
@@ -945,6 +997,7 @@ async function translateQuestion() {
     setStage("recuperar", "done", "Ningún fragmento coincide");
     status("No se pudo traducir la pregunta: " + error.message, true);
   } finally { setBusy(false); }
+  answerIfAuthorized();
 }
 
 async function prepareHybrid() {
@@ -977,7 +1030,7 @@ async function prepareHybrid() {
     setBusy(false);
     if (!ui.hybridPanel.hidden) {
       ui.indexButton.focus({ preventScroll: true });
-      ui.hybridPanel.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
+      scrollInside(ui.thread, ui.hybridPanel, "nearest");
     }
   }
 }
@@ -1030,6 +1083,7 @@ async function runHybrid() {
     showNextSteps({ keepPosition: true });
     status("No se pudo hacer la búsqueda híbrida: " + error.message, true);
   } finally { setBusy(false); }
+  answerIfAuthorized();
 }
 
 async function cancelHybrid() {
@@ -1075,6 +1129,7 @@ function describeProject() {
     (names.length ? "Preguntá sobre tus archivos" : "Primero elegí tus archivos") :
     "Escribí tu pregunta";
   ui.suggestionsWrap.hidden = upload;
+  updateConsentNote();
   ui.uploadHint.hidden = !upload || names.length > 0;
   autosize();
 }
@@ -1116,7 +1171,8 @@ function takeFiles(list) {
   const all = Array.from(list || []);
   const valid = all.filter(file => ACEPTADOS.test(file.name));
   if (!valid.length) {
-    status("Esos archivos no se pueden consultar. Se admiten código Python, JavaScript o TypeScript, Markdown, TXT y PDF.", true);
+    const names = all.map(file => file.name).join(", ");
+    status((all.length === 1 ? names + " no se puede consultar" : "Esos archivos no se pueden consultar") + ". Se admiten código Python, JavaScript o TypeScript, Markdown, TXT y PDF.", true);
     return;
   }
   if (session.selectedOrigin !== "carga") chooseOrigin("carga");
@@ -1154,6 +1210,7 @@ ui.useExample.addEventListener("click", () => chooseOrigin("ejemplo"));
 ui.useUpload.addEventListener("click", () => chooseOrigin("carga"));
 ui.uploadFiles.addEventListener("change", () => {
   if (session.origin === "carga") session.mode = null;
+  setConsent("carga", false);
   resetThread();
   renderFileList();
   ui.uploadSummary.textContent = filesSummary();
@@ -1198,8 +1255,19 @@ ui.question.addEventListener("keydown", event => {
     ui.queryForm.requestSubmit();
   }
 });
-ui.question.addEventListener("input", () => { updateCounter(); autosize(); });
-ui.answerButton.addEventListener("click", generateAnswer);
+ui.question.addEventListener("input", () => {
+  updateCounter();
+  autosize();
+  if (!ui.status.hidden && !session.busy) status("", false);
+});
+ui.answerButton.addEventListener("click", () => {
+  setConsent(session.selectedOrigin, true);
+  generateAnswer();
+});
+ui.revokeConsent.addEventListener("click", () => {
+  setConsent(session.selectedOrigin, false);
+  announce("Antes de cada envío a OpenAI vas a ver qué se envía y confirmarlo.");
+});
 ui.translateButton.addEventListener("click", translateQuestion);
 ui.hybridButton.addEventListener("click", prepareHybrid);
 ui.indexButton.addEventListener("click", runHybrid);
@@ -1269,7 +1337,7 @@ ui.guideDialog.addEventListener("click", event => { if (event.target === ui.guid
 ui.guideDialog.querySelectorAll(".guia-indice a").forEach(link => link.addEventListener("click", event => {
   event.preventDefault();
   const target = document.querySelector(link.getAttribute("href"));
-  if (target) target.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  if (target) scrollInside(ui.guideDialog.querySelector(".guia-cuerpo"), target, "start");
 }));
 
 document.querySelector(".skip-link").addEventListener("click", event => {
@@ -1289,6 +1357,7 @@ async function initialize() {
     session.suggestions = questions;
     ui.apiState.dataset.model = state.modelo_disponible ? "si" : "no";
     ui.apiState.textContent = state.modelo_disponible ? "Responde con OpenAI cuando lo autorizás" : "Solo búsqueda: el servidor no tiene clave de OpenAI";
+    updateConsentNote();
     const visible = questions.filter(item => SUGERENCIAS_VISIBLES.includes(item.id));
     (visible.length ? visible : questions).forEach(item => {
       const without = item.id === "abstencion";
