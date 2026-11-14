@@ -9,8 +9,8 @@
   <meta name="description" content="Un laboratorio de RAG: hacé una pregunta sobre un proyecto de código, mirá qué fragmentos encuentra la búsqueda y cómo el modelo responde citándolos.">
   <link rel="preload" href="/assets/fonts/atkinson-hyperlegible-next-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/atkinson-hyperlegible-next-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/styles.css?v=6">
-  <script defer src="/assets/app.js?v=6"></script>
+  <link rel="stylesheet" href="/assets/styles.css?v=7">
+  <script defer src="/assets/app.js?v=7"></script>
 </head>
 <body>
   <a class="skip-link" href="#question">Ir a la pregunta</a>
@@ -78,7 +78,7 @@
       <div class="lateral-pie">
         <p id="apiState" class="modo-demo">Conectando con el servidor…</p>
         <div id="consentNote" class="permiso-sesion" hidden>
-          <p>En esta sesión ya autorizaste enviar tus preguntas y los fragmentos a OpenAI.</p>
+          <p>En esta sesión ya autorizaste enviar tus preguntas y los fragmentos a OpenAI. <span id="consentQuota"></span></p>
           <button id="revokeConsent" type="button" class="boton-lateral">Confirmar cada envío</button>
         </div>
         <button id="openGuide" type="button" class="enlace-lateral">
@@ -411,6 +411,7 @@
           <div><dt>Búsqueda híbrida</dt><dd>Con el ejemplo, solo tu pregunta cuando su índice ya está preparado; si no, también el texto del ejemplo. Con tus archivos, también el texto permitido de esos archivos, para calcular sus vectores.</dd></div>
           <div><dt>Traducir la pregunta</dt><dd>Solo tu pregunta.</dd></div>
         </dl>
+        <p id="quotaNote" class="limites" hidden></p>
         <p class="limites">El ejemplo es público y ficticio. Tus archivos se borran en menos de 24 horas, o antes si el servicio gratuito se duerme o reinicia. Antes de enviar algo a OpenAI, un filtro deja afuera los archivos con nombres sensibles (como secrets, credentials o archivos ocultos) y los que parecen contener claves.</p>
       </section>
     </div>

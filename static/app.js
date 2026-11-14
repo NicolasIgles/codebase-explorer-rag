@@ -168,9 +168,33 @@ async function api(path, options) {
   catch { data = {}; }
   if (!response.ok) {
     const detail = Array.isArray(data.detail) ? data.detail.map(item => item.msg).join("; ") : data.detail;
-    throw new Error(detail || "La solicitud no pudo completarse.");
+    const error = new Error(detail || "La solicitud no pudo completarse.");
+    error.status = response.status;
+    error.retryAfter = Number(response.headers.get("Retry-After")) || null;
+    throw error;
   }
   return data;
+}
+
+function waitText(seconds) {
+  if (seconds < 60) return plural(seconds, "segundo");
+  return plural(Math.ceil(seconds / 60), "minuto");
+}
+
+/* Un 429 dice qué límite se alcanzó y cuánto falta, sin pedir que se reintente ya. */
+function errorText(error, prefix) {
+  if (error.status !== 429) return (prefix || "") + error.message;
+  const base = error.message.replace(/\s*(Volvé a intentarlo más tarde|reintentá)\.?$/i, "").trim();
+  const when = error.retryAfter ? " Podés volver a intentar en " + waitText(error.retryAfter) + "." : " Volvé a intentarlo más tarde.";
+  const meanwhile = /OpenAI/.test(base) ? " Mientras tanto, la búsqueda por palabras sigue funcionando." : "";
+  return base.replace(/\.?$/, ".") + when + meanwhile;
+}
+
+function quotaText() {
+  const quota = session.quota;
+  if (!quota || !quota.maximo) return "";
+  const span = quota.ventana_minutos === 60 ? "por hora" : "cada " + plural(quota.ventana_minutos, "minuto");
+  return "Cada visitante tiene hasta " + plural(quota.maximo, "envío") + " a OpenAI " + span + ".";
 }
 
 function announce(message) {
@@ -183,9 +207,7 @@ function status(message, error) {
   ui.status.classList.toggle("error", Boolean(error));
   ui.status.setAttribute("role", error ? "alert" : "status");
   ui.status.hidden = !message;
-  if (message && error) {
-    ui.status.focus({ preventScroll: true });
-  }
+  /* role="alert" ya lo anuncia; no se mueve el foco para no sacar a la persona del cuadro de texto. */
 }
 
 /* Desplaza solo el contenedor indicado (el hilo, el panel o la guía), nunca la página:
@@ -474,7 +496,7 @@ async function openSource(number) {
     ui.closeSourceTop.focus();
     if (cited) requestAnimationFrame(() => ui.sourceCode.querySelectorAll(".linea").forEach(line => line.classList.add("marcada")));
   } catch (error) {
-    status(error.message, true);
+    status(errorText(error), true);
   }
 }
 
@@ -695,6 +717,7 @@ function archiveTurn() {
   copy.querySelectorAll("[tabindex='-1']").forEach(node => node.removeAttribute("tabindex"));
   const proceso = copy.querySelector(".proceso");
   if (proceso) proceso.open = false;
+  copy.querySelectorAll(".cita").forEach(chip => chip.classList.add("marcada"));
 
   /* La evidencia de esa pregunta queda guardada para volver a abrirla en el panel. */
   const cards = ui.sources.querySelectorAll(".fragmento").length;
@@ -946,7 +969,7 @@ async function search() {
   } catch (error) {
     resetStages();
     setStage("recuperar", "skipped", "No se pudo buscar");
-    status(error.message, true);
+    status(errorText(error), true);
   } finally { setBusy(false); }
   answerIfAuthorized();
 }
@@ -971,8 +994,13 @@ async function generateAnswer() {
     setStage("contexto", "waiting", "Esperando tu autorización para enviar a OpenAI");
     setStage("responder", "idle");
     ui.answerButton.hidden = false;
-    ui.sendPanel.hidden = false;
-    status("No se pudo generar la respuesta: " + error.message, true);
+    ui.sendPanel.hidden = error.status === 429;
+    if (error.status === 429) {
+      setStage("contexto", "done", "Tu pregunta y " + plural(session.sources.length, "fragmento") + ", listos para el modelo");
+      setStage("responder", "abstained", "No respondió: se alcanzó el límite de envíos a OpenAI");
+      ui.sendPanel.hidden = true;
+    }
+    status(errorText(error, "No se pudo generar la respuesta: "), true);
   } finally { setBusy(false); }
 }
 
@@ -995,7 +1023,7 @@ async function translateQuestion() {
     }
   } catch (error) {
     setStage("recuperar", "done", "Ningún fragmento coincide");
-    status("No se pudo traducir la pregunta: " + error.message, true);
+    status(errorText(error, "No se pudo traducir la pregunta: "), true);
   } finally { setBusy(false); }
   answerIfAuthorized();
 }
@@ -1025,7 +1053,7 @@ async function prepareHybrid() {
     ui.translatePanel.hidden = true;
     ui.hybridButton.hidden = true;
     ui.hybridPanel.hidden = false;
-  } catch (error) { status(error.message, true); }
+  } catch (error) { status(errorText(error), true); }
   finally {
     setBusy(false);
     if (!ui.hybridPanel.hidden) {
@@ -1081,7 +1109,7 @@ async function runHybrid() {
     await discardPendingHybrid();
     ui.hybridPanel.hidden = true;
     showNextSteps({ keepPosition: true });
-    status("No se pudo hacer la búsqueda híbrida: " + error.message, true);
+    status(errorText(error, "No se pudo hacer la búsqueda híbrida: "), true);
   } finally { setBusy(false); }
   answerIfAuthorized();
 }
@@ -1232,7 +1260,7 @@ ui.deleteUpload.addEventListener("click", async () => {
     ui.uploadSummary.textContent = "Tus archivos se borraron del servidor.";
     describeProject();
     status("Tus archivos se borraron del servidor.", false);
-  } catch (error) { status(error.message, true); }
+  } catch (error) { status(errorText(error), true); }
 });
 
 /* ---------- compositor ---------- */
@@ -1355,6 +1383,14 @@ async function initialize() {
     session.modelAvailable = state.modelo_disponible;
     session.indexAvailable = state.indice_ejemplo_preparado;
     session.suggestions = questions;
+    session.quota = state.envios_openai || null;
+    const quota = quotaText();
+    if (quota) {
+      ui.contextNote.textContent += " " + quota;
+      $("consentQuota").textContent = quota;
+      $("quotaNote").textContent = quota + " Buscar por palabras, leer los fragmentos y repetir una respuesta ya generada no gastan ese cupo.";
+      $("quotaNote").hidden = false;
+    }
     ui.apiState.dataset.model = state.modelo_disponible ? "si" : "no";
     ui.apiState.textContent = state.modelo_disponible ? "Responde con OpenAI cuando lo autorizás" : "Solo búsqueda: el servidor no tiene clave de OpenAI";
     updateConsentNote();

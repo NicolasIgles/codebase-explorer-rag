@@ -7,7 +7,10 @@ from unittest.mock import patch
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from api_http import CACHE_EJEMPLO, EJEMPLO as EJEMPLO_PUBLICO, ColeccionesTemporales, LimitesApi, crear_app
+from api_http import (
+    CACHE_EJEMPLO, EJEMPLO as EJEMPLO_PUBLICO, ColeccionesTemporales,
+    LimitesApi, LimitadorOpenAI, crear_app,
+)
 
 
 EJEMPLO = Path(__file__).parent / "sample_project"
@@ -32,6 +35,13 @@ class ApiHttpTest(unittest.TestCase):
         )
         self.assertEqual(respuesta.status_code, 201, respuesta.text)
         return respuesta.json()["coleccion_id"]
+
+    def test_estado_informa_el_cupo_de_envios_a_openai(self):
+        cliente = TestClient(crear_app(
+            limites=LimitesApi(llamadas_openai_origen=3, ventana_openai_segundos=1800)
+        ))
+        estado = cliente.get("/estado").json()
+        self.assertEqual(estado["envios_openai"], {"maximo": 3, "ventana_minutos": 30})
 
     def test_local_recupera_sin_api_y_permite_liberar_coleccion(self):
         with patch(
@@ -308,6 +318,89 @@ class ApiHttpTest(unittest.TestCase):
         ):
             aceptada = cliente.post(ruta, json={"autorizacion": "ENVIAR"})
         self.assertEqual(aceptada.status_code, 200, aceptada.text)
+
+    def test_cinco_envios_openai_por_visitante_en_una_hora_movil(self):
+        class Reloj:
+            instante = 0.0
+
+            def __call__(self):
+                return self.instante
+
+        reloj = Reloj()
+        cupo = LimitadorOpenAI(LimitesApi(), reloj)
+        for _ in range(5):
+            cupo.consumir("visitante-a")
+        with self.assertRaises(HTTPException) as exceso:
+            cupo.consumir("visitante-a")
+        self.assertEqual(exceso.exception.status_code, 429)
+        self.assertEqual(exceso.exception.headers["Retry-After"], "3600")
+        cupo.consumir("visitante-b")
+        reloj.instante = 3599.0
+        with self.assertRaises(HTTPException) as exceso:
+            cupo.consumir("visitante-a")
+        self.assertEqual(exceso.exception.headers["Retry-After"], "1")
+        reloj.instante = 3600.0
+        cupo.consumir("visitante-a")
+
+    def test_cupo_openai_no_cuenta_busqueda_local_ni_respuesta_guardada(self):
+        class Reloj:
+            instante = 0.0
+
+            def __call__(self):
+                return self.instante
+
+        reloj = Reloj()
+        cliente = TestClient(crear_app(
+            limites=LimitesApi(
+                llamadas_openai_origen=1, peticiones_origen=100,
+                vida_segundos=7200,
+            ),
+            reloj=reloj,
+        ))
+        creada = cliente.post("/ejemplo/colecciones", json={"modo": "acotado"})
+        self.assertEqual(creada.status_code, 201)
+        coleccion_id = creada.json()["coleccion_id"]
+        ruta_consultas = f"/colecciones/{coleccion_id}/consultas"
+        primera = cliente.post(ruta_consultas, json={"pregunta": "editar tarea"})
+        segunda = cliente.post(ruta_consultas, json={"pregunta": "¿Quién puede editar una tarea?"})
+        self.assertEqual((primera.status_code, segunda.status_code), (201, 201))
+        ruta_respuesta = f"{ruta_consultas}/{{}}/respuesta"
+        with (
+            patch.dict("os.environ", {"OPENAI_API_KEY": "clave-de-prueba"}),
+            patch("servicio_consultas.OpenAI") as constructor,
+        ):
+            constructor.return_value.responses.create.return_value.output_text = (
+                '{"hay_evidencia":false,"respuesta":"","fuentes":[]}'
+            )
+            uno = cliente.post(
+                ruta_respuesta.format(primera.json()["consulta_id"]),
+                json={"autorizacion": "ENVIAR"},
+            )
+            repetida = cliente.post(
+                ruta_respuesta.format(primera.json()["consulta_id"]),
+                json={"autorizacion": "ENVIAR"},
+            )
+            exceso = cliente.post(
+                ruta_respuesta.format(segunda.json()["consulta_id"]),
+                json={"autorizacion": "ENVIAR"},
+            )
+            self.assertEqual(uno.status_code, 200, uno.text)
+            self.assertEqual(repetida.status_code, 200, repetida.text)
+            self.assertEqual(exceso.status_code, 429, exceso.text)
+            self.assertEqual(exceso.headers["Retry-After"], "3600")
+            self.assertEqual(constructor.return_value.responses.create.call_count, 1)
+            self.assertEqual(constructor.call_args.kwargs["max_retries"], 0)
+            self.assertEqual(
+                cliente.post(ruta_consultas, json={"pregunta": "guardar tarea"}).status_code,
+                201,
+            )
+            reloj.instante = 3600.0
+            aceptada = cliente.post(
+                ruta_respuesta.format(segunda.json()["consulta_id"]),
+                json={"autorizacion": "ENVIAR"},
+            )
+            self.assertEqual(aceptada.status_code, 200, aceptada.text)
+            self.assertEqual(constructor.return_value.responses.create.call_count, 2)
 
     def test_vencimiento_limpia_coleccion_y_permite_otra(self):
         class Reloj:

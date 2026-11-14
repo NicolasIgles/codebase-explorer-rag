@@ -40,7 +40,7 @@ def ruta_cache(carpeta, cache_dir=CACHE, cache_key=None):
     return Path(cache_dir) / f"{identificador}.json"
 
 
-def vectores(cliente, carpeta, textos, cache_dir=CACHE, cache_key=None):
+def vectores(cliente, carpeta, textos, cache_dir=CACHE, cache_key=None, antes_envio=None):
     """Reutiliza embeddings de textos idénticos y guarda los nuevos por lote."""
     archivo = ruta_cache(carpeta, cache_dir, cache_key)
     try:
@@ -52,6 +52,10 @@ def vectores(cliente, carpeta, textos, cache_dir=CACHE, cache_key=None):
     guardados = datos["vectores"]
     claves = [hashlib.sha256(texto.encode("utf-8")).hexdigest() for texto in textos]
     faltantes = [(clave, texto) for clave, texto in dict(zip(claves, textos)).items() if clave not in guardados]
+    # Indexar cuenta como un solo envío aunque viaje en varios lotes: si cada lote
+    # consumiera cupo, una carga de más de cinco lotes nunca podría terminar.
+    if faltantes and antes_envio:
+        antes_envio()
     for inicio in range(0, len(faltantes), TAMANO_LOTE):
         lote = faltantes[inicio:inicio + TAMANO_LOTE]
         respuesta = cliente.embeddings.create(
@@ -125,7 +129,7 @@ def implementacion_desde_pruebas(fragmentos, semanticos):
 
 def buscar_con_embeddings(carpeta, pregunta, cliente=None, cache_dir=CACHE, limite=5,
                           usar_importaciones=True, fragmentos=None, guardar_pregunta=True,
-                          cache_key=None):
+                          cache_key=None, antes_envio=None):
     """Devuelve resultados semánticos y combinados para compararlos."""
     if cliente is None:
         raise ValueError("Se requiere un cliente autorizado para calcular embeddings.")
@@ -135,10 +139,17 @@ def buscar_con_embeddings(carpeta, pregunta, cliente=None, cache_dir=CACHE, limi
     textos = [texto_para_embedding(fragmento, usar_importaciones) for fragmento in fragmentos]
     texto_pregunta = "Pregunta sobre código: " + pregunta
     if guardar_pregunta:
-        lista = vectores(cliente, carpeta, textos + [texto_pregunta], cache_dir, cache_key)
+        lista = vectores(
+            cliente, carpeta, textos + [texto_pregunta], cache_dir, cache_key,
+            antes_envio=antes_envio,
+        )
         vectores_codigo, pregunta_vector = lista[:-1], lista[-1]
     else:
-        vectores_codigo = vectores(cliente, carpeta, textos, cache_dir, cache_key)
+        vectores_codigo = vectores(
+            cliente, carpeta, textos, cache_dir, cache_key, antes_envio=antes_envio
+        )
+        if antes_envio:
+            antes_envio()
         respuesta = cliente.embeddings.create(
             model=MODELO,
             dimensions=DIMENSIONES,

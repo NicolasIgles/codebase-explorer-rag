@@ -2,6 +2,7 @@
 
 import asyncio
 import ipaddress
+import math
 import os
 import time
 from collections import deque
@@ -51,6 +52,13 @@ def entero_positivo(nombre, predeterminado):
 def origen_peticion(request):
     """Solo interpreta cabeceras de cliente si el par TCP es un proxy confiable."""
     par = request.client.host if request.client else "desconocido"
+    # Render sobrescribe esta cabecera en su borde. Solo confiar en ella cuando
+    # el proceso corre en Render y la conexión llega desde su proxy local.
+    if os.getenv("RENDER_SERVICE_ID") and par in {"127.0.0.1", "::1"}:
+        try:
+            return str(ipaddress.ip_address(request.headers.get("cf-connecting-ip", "")))
+        except ValueError:
+            return par
     redes = os.getenv("RAG_PROXY_TRUSTED_CIDRS", "")
     try:
         ip_par = ipaddress.ip_address(par)
@@ -61,12 +69,6 @@ def origen_peticion(request):
     except ValueError:
         confiable = False
     if not confiable:
-        return par
-    real = request.headers.get("x-real-ip", "")
-    try:
-        if real:
-            return str(ipaddress.ip_address(real.strip()))
-    except ValueError:
         return par
     cadena = request.headers.get("x-forwarded-for", "")
     try:
@@ -85,6 +87,8 @@ class LimitesApi:
     consultas_coleccion: int = 20
     colecciones_activas: int = 8
     peticiones_origen: int = 20
+    llamadas_openai_origen: int = 5
+    ventana_openai_segundos: int = 3600
     ventana_segundos: int = 60
     vida_segundos: int = 1800
 
@@ -95,6 +99,8 @@ class LimitesApi:
             consultas_coleccion=entero_positivo("RAG_MAX_CONSULTAS", 20),
             colecciones_activas=entero_positivo("RAG_MAX_COLECCIONES", 8),
             peticiones_origen=entero_positivo("RAG_MAX_PETICIONES_ORIGEN", 20),
+            llamadas_openai_origen=entero_positivo("RAG_MAX_LLAMADAS_OPENAI_ORIGEN", 5),
+            ventana_openai_segundos=entero_positivo("RAG_VENTANA_OPENAI_SEGUNDOS", 3600),
             ventana_segundos=entero_positivo("RAG_VENTANA_SEGUNDOS", 60),
             vida_segundos=entero_positivo("RAG_VIDA_COLECCION_SEGUNDOS", 1800),
         )
@@ -221,6 +227,12 @@ class ColeccionesTemporales:
             if registro and consulta_id in registro["consultas"]:
                 registro["consultas"][consulta_id]["estado"] = "fallida"
 
+    def descartar_consulta(self, identificador, consulta_id):
+        with self._lock:
+            registro = self._datos.get(identificador)
+            if registro:
+                registro["consultas"].pop(consulta_id, None)
+
     def obtener_consulta(self, identificador, consulta_id):
         with self._lock:
             consulta = self._registro(identificador)["consultas"].get(consulta_id)
@@ -266,11 +278,13 @@ class ColeccionesTemporales:
             consulta[operacion + "_resultado"] = resultado
             consulta[operacion + "_estado"] = "lista"
 
-    def fallar_operacion(self, identificador, consulta_id, operacion):
+    def fallar_operacion(self, identificador, consulta_id, operacion, reintentar=False):
         with self._lock:
             registro = self._datos.get(identificador)
             if registro and consulta_id in registro["consultas"]:
-                registro["consultas"][consulta_id][operacion + "_estado"] = "fallida"
+                registro["consultas"][consulta_id][operacion + "_estado"] = (
+                    "pendiente" if reintentar else "fallida"
+                )
 
     def eliminar(self, identificador):
         with self._lock:
@@ -302,6 +316,36 @@ class LimitadorRafagas:
                 return False
             momentos.append(ahora)
             return True
+
+
+class LimitadorOpenAI:
+    """Cuenta cada intento de envío a OpenAI durante una hora móvil por visitante."""
+
+    def __init__(self, limites, reloj):
+        self.limites = limites
+        self.reloj = reloj
+        self._origenes = {}
+        self._lock = Lock()
+
+    def consumir(self, origen):
+        ahora = self.reloj()
+        ventana = self.limites.ventana_openai_segundos
+        with self._lock:
+            for clave, momentos in list(self._origenes.items()):
+                while momentos and momentos[0] <= ahora - ventana:
+                    momentos.popleft()
+                if not momentos:
+                    del self._origenes[clave]
+            momentos = self._origenes.setdefault(origen, deque())
+            if len(momentos) >= self.limites.llamadas_openai_origen:
+                espera = max(1, math.ceil(momentos[0] + ventana - ahora))
+                raise HTTPException(
+                    status_code=429,
+                    detail=(f"Alcanzaste el límite de {self.limites.llamadas_openai_origen} "
+                            "envíos a OpenAI por hora. Volvé a intentarlo más tarde."),
+                    headers={"Retry-After": str(espera)},
+                )
+            momentos.append(ahora)
 
 
 class CuerpoExcesivo(Exception):
@@ -345,6 +389,7 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
     cargas = AlmacenCargas(upload_dir, reloj_cargas)
     almacen = ColeccionesTemporales(limites, reloj, cargas)
     rafagas = LimitadorRafagas(limites, reloj)
+    cupo_openai = LimitadorOpenAI(limites, reloj)
     bloqueo_carga = asyncio.Lock()
 
     @app.get("/", include_in_schema=False)
@@ -363,6 +408,10 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
             "indice_ejemplo_preparado": ruta_cache(
                 EJEMPLO, CACHE_EJEMPLO, "ejemplo-v1"
             ).is_file(),
+            "envios_openai": {
+                "maximo": limites.llamadas_openai_origen,
+                "ventana_minutos": max(1, round(limites.ventana_openai_segundos / 60)),
+            },
         }
 
     @app.middleware("http")
@@ -525,7 +574,7 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
         return alcance_visible(almacen.obtener(coleccion_id))
 
     @app.post("/colecciones/{coleccion_id}/consultas", status_code=201)
-    def crear_consulta(coleccion_id: str, entrada: NuevaConsulta):
+    def crear_consulta(coleccion_id: str, entrada: NuevaConsulta, request: Request):
         coleccion = almacen.obtener(coleccion_id)
         pregunta = entrada.pregunta.strip()
         if not pregunta:
@@ -539,8 +588,17 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
             exigir_autorizacion("completo", "indexar código", entrada.autorizacion)
         consulta_id = almacen.reservar_consulta(coleccion_id, pregunta)
         try:
-            resultado = recuperar_fuentes(coleccion, pregunta, entrada.autorizacion)
+            resultado = recuperar_fuentes(
+                coleccion, pregunta, entrada.autorizacion,
+                antes_envio=lambda: cupo_openai.consumir(origen_peticion(request)),
+            )
             almacen.completar_consulta(coleccion_id, consulta_id, resultado)
+        except HTTPException as error:
+            if error.status_code == 429:
+                almacen.descartar_consulta(coleccion_id, consulta_id)
+            else:
+                almacen.fallar_consulta(coleccion_id, consulta_id)
+            raise
         except Exception:
             almacen.fallar_consulta(coleccion_id, consulta_id)
             raise
@@ -560,7 +618,7 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
         return {"numero": numero, "fuente": consulta["fuentes"][numero - 1]}
 
     @app.post("/colecciones/{coleccion_id}/consultas/{consulta_id}/traduccion")
-    def traducir(coleccion_id: str, consulta_id: str, entrada: Confirmacion):
+    def traducir(coleccion_id: str, consulta_id: str, entrada: Confirmacion, request: Request):
         coleccion = almacen.obtener(coleccion_id)
         consulta = almacen.obtener_consulta(coleccion_id, consulta_id)
         if coleccion["modo"] != "acotado" or consulta["fuentes"] or not parece_espanol(consulta["pregunta"]):
@@ -575,7 +633,8 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
         inicio = time.perf_counter()
         try:
             consulta_ingles = traducir_pregunta(
-                coleccion, consulta["pregunta"], entrada.autorizacion
+                coleccion, consulta["pregunta"], entrada.autorizacion,
+                antes_envio=lambda: cupo_openai.consumir(origen_peticion(request)),
             )
             segundos_traduccion = time.perf_counter() - inicio
             if consulta_ingles:
@@ -606,12 +665,17 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
                 },
             )
             return respuesta
+        except HTTPException as error:
+            almacen.fallar_operacion(
+                coleccion_id, consulta_id, "traduccion", reintentar=error.status_code == 429
+            )
+            raise
         except Exception:
             almacen.fallar_operacion(coleccion_id, consulta_id, "traduccion")
             raise
 
     @app.post("/colecciones/{coleccion_id}/consultas/{consulta_id}/respuesta")
-    def responder(coleccion_id: str, consulta_id: str, entrada: Confirmacion):
+    def responder(coleccion_id: str, consulta_id: str, entrada: Confirmacion, request: Request):
         coleccion = almacen.obtener(coleccion_id)
         consulta = almacen.obtener_consulta(coleccion_id, consulta_id)
         if coleccion["modo"] == "local":
@@ -623,7 +687,8 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
             return guardado
         try:
             resultado = generar_respuesta(
-                coleccion, consulta["pregunta"], consulta["fuentes"], entrada.autorizacion
+                coleccion, consulta["pregunta"], consulta["fuentes"], entrada.autorizacion,
+                antes_envio=lambda: cupo_openai.consumir(origen_peticion(request)),
             )
             juicio = resultado["juicio"]
             respuesta = {
@@ -642,6 +707,11 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
             }
             almacen.terminar_operacion(coleccion_id, consulta_id, "respuesta", respuesta)
             return respuesta
+        except HTTPException as error:
+            almacen.fallar_operacion(
+                coleccion_id, consulta_id, "respuesta", reintentar=error.status_code == 429
+            )
+            raise
         except Exception:
             almacen.fallar_operacion(coleccion_id, consulta_id, "respuesta")
             raise
