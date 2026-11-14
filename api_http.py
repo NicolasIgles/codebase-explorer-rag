@@ -408,6 +408,10 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
             "indice_ejemplo_preparado": ruta_cache(
                 EJEMPLO, CACHE_EJEMPLO, "ejemplo-v1"
             ).is_file(),
+            "envios_openai": {
+                "maximo": limites.llamadas_openai_origen,
+                "ventana_minutos": max(1, round(limites.ventana_openai_segundos / 60)),
+            },
         }
 
     @app.middleware("http")

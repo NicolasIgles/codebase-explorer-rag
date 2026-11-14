@@ -36,6 +36,13 @@ class ApiHttpTest(unittest.TestCase):
         self.assertEqual(respuesta.status_code, 201, respuesta.text)
         return respuesta.json()["coleccion_id"]
 
+    def test_estado_informa_el_cupo_de_envios_a_openai(self):
+        cliente = TestClient(crear_app(
+            limites=LimitesApi(llamadas_openai_origen=3, ventana_openai_segundos=1800)
+        ))
+        estado = cliente.get("/estado").json()
+        self.assertEqual(estado["envios_openai"], {"maximo": 3, "ventana_minutos": 30})
+
     def test_local_recupera_sin_api_y_permite_liberar_coleccion(self):
         with patch(
             "servicio_consultas.OpenAI",

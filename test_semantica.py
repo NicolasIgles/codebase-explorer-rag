@@ -50,7 +50,7 @@ class SemanticaTest(unittest.TestCase):
         self.assertEqual(primera, segunda)
         cliente.embeddings.create.assert_called_once()
 
-    def test_cada_lote_nuevo_consume_un_envio_y_la_cache_no(self):
+    def test_indexar_varios_lotes_consume_un_solo_envio_y_la_cache_ninguno(self):
         cliente = Mock()
         def crear(**parametros):
             return SimpleNamespace(data=[
@@ -69,7 +69,7 @@ class SemanticaTest(unittest.TestCase):
                 cliente, Path(temporal), textos, temporal,
                 antes_envio=lambda: envios.append("embedding"),
             )
-        self.assertEqual(envios, ["embedding", "embedding"])
+        self.assertEqual(envios, ["embedding"])
         self.assertEqual(cliente.embeddings.create.call_count, 2)
 
     def test_pruebas_relacionan_un_metodo_con_su_implementacion(self):

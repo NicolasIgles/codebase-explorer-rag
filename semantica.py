@@ -52,10 +52,12 @@ def vectores(cliente, carpeta, textos, cache_dir=CACHE, cache_key=None, antes_en
     guardados = datos["vectores"]
     claves = [hashlib.sha256(texto.encode("utf-8")).hexdigest() for texto in textos]
     faltantes = [(clave, texto) for clave, texto in dict(zip(claves, textos)).items() if clave not in guardados]
+    # Indexar cuenta como un solo envío aunque viaje en varios lotes: si cada lote
+    # consumiera cupo, una carga de más de cinco lotes nunca podría terminar.
+    if faltantes and antes_envio:
+        antes_envio()
     for inicio in range(0, len(faltantes), TAMANO_LOTE):
         lote = faltantes[inicio:inicio + TAMANO_LOTE]
-        if antes_envio:
-            antes_envio()
         respuesta = cliente.embeddings.create(
             model=MODELO,
             dimensions=DIMENSIONES,
