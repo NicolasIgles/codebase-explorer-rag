@@ -34,12 +34,18 @@ from servicio_consultas import (
     recuperar_fuentes,
     traducir_pregunta,
 )
+from validar_evidencia import contexto_para_modelo
 
 
 EJEMPLO = Path(__file__).resolve().parent / "sample_project"
 CACHE_EJEMPLO = Path(__file__).resolve().parent / "index_ejemplo"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 PREGUNTAS_EJEMPLO = Path(__file__).resolve().parent / "preguntas_ejemplo.json"
+
+
+def contexto_visible(pregunta, fuentes):
+    """Lo que generar_respuesta enviaría con estas fuentes; la web lo muestra tal cual."""
+    return contexto_para_modelo(pregunta, fuentes) if fuentes else None
 
 
 def entero_positivo(nombre, predeterminado):
@@ -607,6 +613,7 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
             "pregunta": pregunta,
             "fuentes": resultado["fuentes"],
             "avisos": resultado["avisos"],
+            "contexto_modelo": contexto_visible(pregunta, resultado["fuentes"]),
             "tiempos": {"recuperacion": resultado["segundos"]},
         }
 
@@ -650,6 +657,7 @@ def crear_app(limites=None, permitir_rutas_locales=None, reloj=None, upload_dir=
                 "consulta_ingles": consulta_ingles,
                 "fuentes": resultado["fuentes"],
                 "avisos": resultado["avisos"],
+                "contexto_modelo": contexto_visible(consulta["pregunta"], resultado["fuentes"]),
                 "tiempos": {
                     "recuperacion": consulta["segundos_recuperacion"] + resultado["segundos"],
                     "traduccion": segundos_traduccion,
