@@ -1,0 +1,25 @@
+<!-- @dsCard group="Evidencia" height=540 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Fragmento</title>
+<style>html, body { height: auto; overflow: visible; } body { margin: 0; padding: 20px 24px; background: var(--papel); } .fila { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; } </style></head>
+<body>
+<div class="fragmentos" style="max-width:480px">
+<article class="fragmento citado" aria-label="Fragmento 1: sample_project/permissions.py, líneas 4 a 9">
+<div class="fragmento-cabeza"><span class="fragmento-ruta">sample_project/permissions.py <span>líneas 4–9</span></span><span class="insignias"><span class="insignia insignia-citado">Citado</span></span></div>
+<p class="fragmento-simbolo">Fragmento 1. Función can_edit_task</p>
+<div class="codigo">
+<div class="linea marcada"><span class="ln">4</span><span class="lc">def can_edit_task(user: dict, task: dict) -&gt; bool:</span></div>
+<div class="linea marcada"><span class="ln">5</span><span class="lc">    """Comprueba si el usuario puede editar la tarea por ser responsable o administrador."""</span></div>
+<div class="linea marcada"><span class="ln">6</span><span class="lc">    return user.get("role") == "admin" or task.get("owner_id") == user.get("id")</span></div>
+<div class="linea"><span class="ln">7</span><span class="lc"></span></div>
+<div class="linea"><span class="ln">8</span><span class="lc"></span></div>
+<div class="linea"><span class="ln">9</span><span class="lc">def can_view_project(user: dict, project: dict) -&gt; bool:</span></div>
+</div>
+<p class="razon">Por qué apareció: coincide con <mark class="termino">editar</mark> y <mark class="termino">tarea</mark></p>
+<div class="relevancia"><div class="relevancia-pista"><div class="relevancia-barra" style="width:100%"></div></div><span class="relevancia-texto">La más relevante</span></div>
+<button type="button" class="boton-texto ver-completo">Ver el fragmento completo</button>
+</article>
+</div>
+</body>
+</html>
