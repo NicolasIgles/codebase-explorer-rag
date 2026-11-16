@@ -1,0 +1,56 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Codebase Explorer</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--papel); color: var(--tinta); font-family: var(--font-texto); }
+  .cover { position: relative; width: 960px; height: 288px; overflow: hidden; }
+  .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
+  .art svg { display: block; width: 480px; height: 288px; }
+  .tinta { fill: var(--tinta); }
+  .alta { fill: var(--tinta-alta); }
+  .res { fill: var(--resaltador); }
+  .ln { fill: var(--niebla); }
+  .lm { fill: var(--tinta); }
+  .blk { rx: var(--radio-14); }
+  .banda { rx: var(--radio-3); }
+  .words { position: absolute; left: var(--espacio-32); bottom: var(--espacio-24); max-width: 440px; }
+  .name { margin: 0; font-size: 88px; line-height: .95; font-weight: 800; letter-spacing: -.022em; color: var(--tinta); }
+  .tag { margin: var(--espacio-10) 0 0 2px; font-size: 14px; line-height: 20px; color: var(--grafito); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      tinta 280×278 (el expediente, bleeding off the top) · tinta-alta 176×174 bleeding right · resaltador 176×88 bleeding right · ≈41% of 960×288
+  arrangement one tall tinta slab with two stacked satellites, bottoms on one line espacio-24 above the edge, espacio-16 gutters
+  pattern     literal motif, the mark itself ("el amarillo de resaltador significa una sola cosa: evidencia"): nine 8px code lines at an espacio-24 pitch in niebla, rows 4–6 cited, a resaltador band behind them and their ink turned tinta
+  scales      pitch espacio-24, gutters espacio-16, indents espacio-24; slab and blocks radio-14, band radio-3, lines rx half of 8px
+-->
+<rect class="tinta blk" x="24" y="-14" width="280" height="278" rx="14"/>
+<rect class="res banda" x="40" y="102" width="248" height="76" rx="3"/>
+<rect class="ln" x="56" y="40" width="160" height="8" rx="4"/>
+<rect class="ln" x="80" y="64" width="208" height="8" rx="4"/>
+<rect class="ln" x="80" y="88" width="120" height="8" rx="4"/>
+<rect class="lm" x="56" y="112" width="184" height="8" rx="4"/>
+<rect class="lm" x="80" y="136" width="216" height="8" rx="4"/>
+<rect class="lm" x="80" y="160" width="152" height="8" rx="4"/>
+<rect class="ln" x="56" y="184" width="96" height="8" rx="4"/>
+<rect class="ln" x="80" y="208" width="176" height="8" rx="4"/>
+<rect class="ln" x="56" y="232" width="128" height="8" rx="4"/>
+<rect class="alta blk" x="320" y="-14" width="176" height="174" rx="14"/>
+<rect class="res blk" x="320" y="176" width="176" height="88" rx="14"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">Codebase Explorer</h1>
+<p class="tag">Preguntale a un proyecto de código.</p>
+</div>
+</div>
+</body>
+</html>

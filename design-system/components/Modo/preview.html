@@ -1,0 +1,16 @@
+<!-- @dsCard group="Modos de búsqueda" height=412 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Modo</title>
+<style>html, body { height: auto; overflow: visible; } body { margin: 0; padding: 20px 24px; background: var(--papel); } .fila { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; } </style></head>
+<body>
+<div style="display:grid;gap:14px;max-width:640px">
+<div class="modo"><span class="modo-etiqueta" data-mode="acotado">Búsqueda por palabras</span><span class="modo-etiqueta" data-mode="completo">Búsqueda híbrida</span></div>
+<div class="modos" style="margin:0">
+<article class="modo-tarjeta" data-mode="acotado"><h4><span class="modo-punto"></span>Por palabras</h4><p>Busca los fragmentos que comparten palabras con tu pregunta. Es instantánea y no sale del servidor.</p></article>
+<article class="modo-tarjeta" data-mode="semantica"><h4><span class="modo-punto"></span>Por significado</h4><p>Compara qué tan cerca están en significado la pregunta y cada fragmento. Necesita enviar texto a OpenAI.</p></article>
+<article class="modo-tarjeta" data-mode="completo"><h4><span class="modo-punto"></span>Híbrida</h4><p>Combina lo que coincide en palabras y lo que coincide en significado.</p></article>
+</div>
+</div>
+</body>
+</html>

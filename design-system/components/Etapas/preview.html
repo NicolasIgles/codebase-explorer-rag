@@ -1,0 +1,28 @@
+<!-- @dsCard group="Progreso" height=186 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Etapas</title>
+<style>html, body { height: auto; overflow: visible; } body { margin: 0; padding: 20px 24px; background: var(--papel); } .fila { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; } </style></head>
+<body>
+<details class="proceso" data-state="active" open>
+<summary><span class="proceso-icono" aria-hidden="true"></span><span>Armando el contexto</span></summary>
+<ol class="etapas" aria-label="Etapas de RAG">
+<li class="etapa" data-state="done"><span class="etapa-marca" aria-hidden="true">
+<svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+<svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+<svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+</span><span class="etapa-cuerpo"><strong>Recuperar</strong><span class="etapa-texto">3 fragmentos encontrados, en este servidor</span></span></li>
+<li class="etapa" data-state="active"><span class="etapa-marca" aria-hidden="true">
+<svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+<svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+<svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+</span><span class="etapa-cuerpo"><strong>Armar el contexto</strong><span class="etapa-texto">Junta tu pregunta y los fragmentos encontrados</span></span></li>
+<li class="etapa" data-state="idle"><span class="etapa-marca" aria-hidden="true">
+<svg class="etapa-icono etapa-check" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7"/></svg>
+<svg class="etapa-icono etapa-guion" viewBox="0 0 16 16"><path d="M4 8h8"/></svg>
+<svg class="etapa-giro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+</span><span class="etapa-cuerpo"><strong>Responder con citas</strong><span class="etapa-texto">El modelo cita cada fragmento que usa, o avisa que no hay evidencia</span></span></li>
+</ol>
+</details>
+</body>
+</html>

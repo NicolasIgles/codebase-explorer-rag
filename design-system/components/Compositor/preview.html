@@ -1,0 +1,19 @@
+<!-- @dsCard group="Entrada" height=140 -->
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Compositor</title>
+<style>html, body { height: auto; overflow: visible; } body { margin: 0; padding: 20px 24px; background: var(--papel); } .fila { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; } </style></head>
+<body>
+<div class="compositor" style="padding:0">
+<div class="compositor-caja">
+<label for="question" class="sr-only">Tu pregunta sobre el proyecto de ejemplo</label>
+<textarea id="question" rows="1" placeholder="Escribí tu pregunta"></textarea>
+<button class="boton-enviar" type="button"><span>Buscar</span><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5"/><path d="M12 12l3.5 3.5"/></svg></button>
+</div>
+<div class="compositor-pie">
+<p class="compositor-ayuda">Enter busca y Mayús + Enter agrega una línea. La búsqueda por palabras no sale de este servidor.</p>
+<p class="contador">0/500</p>
+</div>
+</div>
+</body>
+</html>
