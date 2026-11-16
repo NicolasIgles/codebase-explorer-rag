@@ -69,7 +69,7 @@ class MultistackTest(unittest.TestCase):
             self.assertEqual(inicio.main("acotado"), 0)
         crear.assert_called_once()
         mensaje = crear.call_args.kwargs["input"]
-        self.assertIn("lib/format.js:1-3 (formatTask)", mensaje)
+        self.assertIn('ubicacion="lib/format.js:1-3" simbolo="formatTask"', mensaje)
         self.assertIn("1: export function formatTask", mensaje)
         self.assertIn("Respuesta: La función formatTask formatea la tarea. [1]", salida.getvalue())
 

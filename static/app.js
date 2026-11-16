@@ -112,7 +112,7 @@ const ui = {
 
 const session = {
   id: null, mode: null, origin: null, selectedOrigin: "ejemplo",
-  queryId: null, sources: [], cited: [], question: "", matchQuestion: null, pendingHybrid: null,
+  queryId: null, sources: [], modelContext: null, cited: [], question: "", matchQuestion: null, pendingHybrid: null,
   previousActions: null, previousKeys: null, modelAvailable: false,
   indexAvailable: false, busy: false, suggestions: []
 };
@@ -348,8 +348,9 @@ function codeBlock(lines, isText, limit) {
   return block;
 }
 
-function renderSources(sources, seconds) {
+function renderSources(sources, seconds, modelContext) {
   session.sources = sources;
+  session.modelContext = modelContext || null;
   session.cited = [];
   ui.results.hidden = false;
   ui.sourcesTitle.firstChild.textContent = "Lo que encontró la búsqueda ";
@@ -576,14 +577,11 @@ function showContext() {
   ui.contextCount.textContent = plural(total, "fragmento");
   ui.contextChips.replaceChildren(...session.sources.map((source, index) => sourceChip(source, index + 1)));
 
-  /* Mismo formato que preparar_consulta y las instrucciones de validar_evidencia.py. */
-  const blocks = session.sources.map((source, index) => {
-    const name = [source.contenedor, source.simbolo].filter(Boolean).join(".");
-    return "[" + (index + 1) + "] " + serverPlace(source) + " (" + name + ")\n" + (source.codigo || "");
-  });
-  const text = "Pregunta: " + session.question + "\n\nFuentes:\n" + blocks.join("\n\n");
+  /* El servidor devuelve el texto exacto que enviaría (validar_evidencia.contexto_para_modelo). */
+  const context = session.modelContext || { mensaje: "", instrucciones: "" };
+  const text = context.mensaje;
   ui.sendPreview.textContent = text;
-  $("instructionsPreview").textContent = MODEL_INSTRUCTIONS;
+  $("instructionsPreview").textContent = context.instrucciones;
   ui.contextSize.textContent = "En total, " + text.length.toLocaleString("es-AR") + " caracteres: la pregunta y estos fragmentos completos, con su archivo y sus líneas. Nada más del proyecto.";
 }
 
@@ -636,19 +634,6 @@ function renderComparison(before, after) {
   ui.comparison.hidden = false;
 }
 
-const MODEL_INSTRUCTIONS =
-  "Decidí si alguno de los fragmentos realmente contiene evidencia para responder. " +
-  "Un nombre parecido no alcanza. Si hay evidencia, respondé en español de forma breve " +
-  "y poné en fuentes solo los números que respaldan la respuesta; no agregues citas al texto. " +
-  "Si no hay evidencia suficiente, usá hay_evidencia=false, respuesta vacía y fuentes vacías. " +
-  "No inventes comportamiento que no figure en los fragmentos.";
-
-function serverPlace(source) {
-  const place = source.ubicacion || {};
-  const base = place.tipo === "pagina" ? source.ruta + ":página " + place.pagina : source.ruta + ":" + source.inicio + "-" + source.fin;
-  return place.columna_inicio != null ? base + ":columnas " + place.columna_inicio + "-" + place.columna_fin : base;
-}
-
 function abstentionBox(title, text) {
   const box = el("div", "abstencion");
   box.append(el("p", "abstencion-titulo", title), el("p", "", text));
@@ -689,6 +674,7 @@ function clearResults() {
   showLiveEvidence();
   session.queryId = null;
   session.sources = [];
+  session.modelContext = null;
   session.cited = [];
   session.question = "";
   session.matchQuestion = null;
@@ -964,7 +950,7 @@ async function search() {
     ui.question.value = "";
     autosize();
     updateCounter();
-    renderSources(query.fuentes, query.tiempos.recuperacion);
+    renderSources(query.fuentes, query.tiempos.recuperacion, query.contexto_modelo);
     showNextSteps();
   } catch (error) {
     resetStages();
@@ -1013,7 +999,7 @@ async function translateQuestion() {
       method: "POST", body: JSON.stringify({ autorizacion: "ENVIAR" })
     });
     session.matchQuestion = translated.consulta_ingles || null;
-    renderSources(translated.fuentes, translated.tiempos.recuperacion);
+    renderSources(translated.fuentes, translated.tiempos.recuperacion, translated.contexto_modelo);
     showNextSteps();
     ui.translatePanel.hidden = true;
     if (translated.consulta_ingles) {
@@ -1096,7 +1082,7 @@ async function runHybrid() {
     session.previousKeys = previousKeys;
     session.matchQuestion = null;
     ui.hybridPanel.hidden = true;
-    renderSources(query.fuentes, query.tiempos.recuperacion);
+    renderSources(query.fuentes, query.tiempos.recuperacion, query.contexto_modelo);
     showNextSteps({ keepPosition: true });
     renderComparison(previousSources, query.fuentes);
     ui.hybridNote.textContent = ui.comparisonSummary.textContent + " El detalle, fragmento por fragmento, está en la evidencia.";

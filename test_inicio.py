@@ -129,7 +129,7 @@ class BusquedaTest(unittest.TestCase):
         fragmentos = local.buscar_en_carpeta(EJEMPLO, pregunta)
         mensaje = preparar_consulta(pregunta, fragmentos)
         self.assertIn(pregunta, mensaje)
-        self.assertIn("[1] permissions.py:4-6", mensaje)
+        self.assertIn('<fragmento n="1" ubicacion="permissions.py:4-6"', mensaje)
         self.assertIn("return user.get(\"role\")", mensaje)
 
     def test_sigue_funciones_llamadas_desde_la_solicitud(self):
