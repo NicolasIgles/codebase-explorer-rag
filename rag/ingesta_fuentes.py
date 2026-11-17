@@ -3,9 +3,9 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fragmentos import normalizar
-from ingesta_codigo import obtener_fragmentos as obtener_codigo
-from ingesta_documentos import obtener_fragmentos_documentos
+from rag.fragmentos import normalizar
+from rag.ingesta_codigo import obtener_fragmentos as obtener_codigo
+from rag.ingesta_documentos import obtener_fragmentos_documentos
 
 
 def obtener_fragmentos(carpeta, avisos=None, coleccion_id=None):

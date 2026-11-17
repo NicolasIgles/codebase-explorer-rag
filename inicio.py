@@ -13,15 +13,15 @@ from openai import (
     RateLimitError,
 )
 
-from fragmentos import lugar
-from servicio_consultas import (
+from rag.fragmentos import lugar
+from rag.servicio_consultas import (
     alcance_indexacion,
     generar_respuesta,
     preparar_coleccion,
     recuperar_fuentes,
     traducir_pregunta,
 )
-from recuperacion_local import parece_espanol
+from rag.recuperacion_local import parece_espanol
 
 
 def mensaje_error_api(error):

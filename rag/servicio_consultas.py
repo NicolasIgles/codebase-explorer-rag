@@ -7,12 +7,12 @@ from pathlib import Path
 
 from openai import OpenAI
 
-from fragmentos import identidad
-from ingesta_fuentes import obtener_fragmentos
-from privacidad import filtrar_indice_remoto
-from recuperacion_local import MAX_FUENTES, ordenar_fragmentos, parece_espanol
-from semantica import CACHE, buscar_con_embeddings, texto_para_embedding
-from validar_evidencia import responder_con_evidencia
+from rag.fragmentos import identidad
+from rag.ingesta_fuentes import obtener_fragmentos
+from rag.privacidad import filtrar_indice_remoto
+from rag.recuperacion_local import MAX_FUENTES, ordenar_fragmentos, parece_espanol
+from rag.semantica import CACHE, buscar_con_embeddings, texto_para_embedding
+from rag.validar_evidencia import responder_con_evidencia
 
 
 MODOS = {"local", "acotado", "completo"}

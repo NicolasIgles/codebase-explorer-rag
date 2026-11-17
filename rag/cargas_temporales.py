@@ -10,8 +10,8 @@ from threading import RLock
 
 from fastapi import HTTPException
 
-from ingesta_documentos import EXTENSIONES_DOCUMENTO
-from lenguajes_js import EXTENSIONES as EXTENSIONES_JS
+from rag.ingesta_documentos import EXTENSIONES_DOCUMENTO
+from rag.lenguajes_js import EXTENSIONES as EXTENSIONES_JS
 
 
 EXTENSIONES_PERMITIDAS = EXTENSIONES_DOCUMENTO | set(EXTENSIONES_JS) | {".py"}

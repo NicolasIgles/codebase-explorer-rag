@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import re
 
-from validar_evidencia import (
+from rag.validar_evidencia import (
     INSTRUCCIONES, contexto_para_modelo, interpretar_respuesta, preparar_consulta,
     responder_con_evidencia,
 )

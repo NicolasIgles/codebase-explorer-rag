@@ -6,9 +6,9 @@ from pathlib import Path
 
 from openai import OpenAI, OpenAIError
 
-from evaluar import coincide
-from semantica import buscar_con_embeddings
-from validar_evidencia import responder_con_evidencia
+from evaluacion.evaluar import coincide
+from rag.semantica import buscar_con_embeddings
+from rag.validar_evidencia import responder_con_evidencia
 
 
 def main():

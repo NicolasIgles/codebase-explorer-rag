@@ -6,9 +6,9 @@ from pathlib import Path
 
 from openai import OpenAI
 
-from evaluar import coincide
-from recuperacion_local import buscar_en_carpeta
-from semantica import buscar_con_embeddings
+from evaluacion.evaluar import coincide
+from rag.recuperacion_local import buscar_en_carpeta
+from rag.semantica import buscar_con_embeddings
 
 
 def main():

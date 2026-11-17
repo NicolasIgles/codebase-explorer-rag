@@ -8,10 +8,10 @@ from pathlib import Path
 
 from openai import OpenAI
 
-from ingesta_fuentes import obtener_fragmentos
-from recuperacion_local import ordenar_fragmentos
-from semantica import buscar_con_embeddings
-from servicio_consultas import generar_respuesta, preparar_coleccion
+from rag.ingesta_fuentes import obtener_fragmentos
+from rag.recuperacion_local import ordenar_fragmentos
+from rag.semantica import buscar_con_embeddings
+from rag.servicio_consultas import generar_respuesta, preparar_coleccion
 
 
 RAIZ = Path(__file__).resolve().parent
@@ -134,7 +134,7 @@ def main():
                         help="Evalúa respuesta y abstención con las fuentes guardadas")
     parser.add_argument("--autorizar-responder", action="store_true",
                         help="Confirma el envío de preguntas y hasta cinco fuentes a OpenAI")
-    parser.add_argument("--salida", type=Path, default=RAIZ / "evaluacion_holdout.json")
+    parser.add_argument("--salida", type=Path, default=RAIZ / "resultados" / "evaluacion_holdout.json")
     args = parser.parse_args()
     if args.todos and (not args.autorizar_indexar or not os.getenv("OPENAI_API_KEY")):
         parser.error("--todos exige --autorizar-indexar y OPENAI_API_KEY")

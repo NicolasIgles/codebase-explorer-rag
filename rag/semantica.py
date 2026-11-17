@@ -5,15 +5,16 @@ import json
 import math
 from pathlib import Path
 
-from fragmentos import identidad, se_superponen
-from ingesta_codigo import obtener_fragmentos
-from recuperacion_local import ordenar_fragmentos
+from rag.fragmentos import identidad, se_superponen
+from rag.ingesta_codigo import obtener_fragmentos
+from rag.recuperacion_local import ordenar_fragmentos
 
 
 MODELO = "text-embedding-3-small"
 DIMENSIONES = 256
 TAMANO_LOTE = 64
-CACHE = Path(__file__).parent / "cache_embeddings"
+# En la raíz del repositorio, donde la excluyen .gitignore y .dockerignore.
+CACHE = Path(__file__).resolve().parent.parent / "cache_embeddings"
 
 
 def texto_para_embedding(fragmento, usar_importaciones=True):

@@ -4,8 +4,8 @@ import math
 import re
 import unicodedata
 
-from fragmentos import se_superponen
-from ingesta_codigo import obtener_fragmentos
+from rag.fragmentos import se_superponen
+from rag.ingesta_codigo import obtener_fragmentos
 
 
 PALABRAS_COMUNES = {

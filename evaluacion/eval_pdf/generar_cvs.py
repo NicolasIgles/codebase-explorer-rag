@@ -7,7 +7,7 @@ Cada CV imita una forma común de exportar un currículum:
   habilidades en una línea separada por barras y viñetas.
 - cv_canva.pdf: plantilla de editor visual que dibuja cada palabra por separado y los títulos letra por letra.
 
-Uso: python eval_pdf/generar_cvs.py  (requiere reportlab y LibreOffice para cv_word.pdf)
+Uso: python evaluacion/eval_pdf/generar_cvs.py  (requiere reportlab y LibreOffice para cv_word.pdf)
 """
 
 import shutil
