@@ -7,4 +7,4 @@ Estos resultados guiaron cambios en la recuperación y **no son evaluación inde
 - En dos repositorios web públicos usados para ajustar la búsqueda híbrida, se observaron 18/24 fuentes en primer lugar y 23/24 entre cinco. En dos repositorios adicionales, 9/13 y 13/13 respectivamente.
 - Las pruebas de respuesta sobre esos conjuntos validaron citas y abstenciones puntuales, pero no establecen precisión general. Una cita válida puede acompañar una afirmación incorrecta.
 
-Los scripts `evaluar.py`, `evaluar_semantica.py` y `evaluar_evidencia.py` permiten repetir partes de estos experimentos con sus conjuntos de preguntas. El proyecto `eval_heldout/` se reservó después para una medición separada.
+Los scripts `evaluacion/evaluar.py`, `evaluacion/evaluar_semantica.py` y `evaluacion/evaluar_evidencia.py` permiten repetir partes de estos experimentos con sus conjuntos de preguntas (`evaluacion/preguntas/`). Se ejecutan desde la raíz, por ejemplo `python -m evaluacion.evaluar ejemplo/sample_project evaluacion/preguntas/questions.json`. El proyecto `evaluacion/eval_heldout/` se reservó después para una medición separada.

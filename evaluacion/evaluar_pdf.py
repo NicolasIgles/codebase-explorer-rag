@@ -6,9 +6,9 @@ de los textos esperados; se comparan sin espacios ni mayúsculas para tolerar co
 Los casos con "esperado": [] son negativos: lo correcto es no devolver fragmentos.
 
 Uso:
-  python evaluar_pdf.py                       # CVs sintéticos de eval_pdf/cvs
-  python evaluar_pdf.py --detalle             # muestra términos y fragmentos de cada fallo
-  python evaluar_pdf.py --cvs mis_pdfs --casos mis_casos.json   # tus propios PDFs
+  python -m evaluacion.evaluar_pdf             # CVs sintéticos de evaluacion/eval_pdf/cvs
+  python -m evaluacion.evaluar_pdf --detalle   # muestra términos y fragmentos de cada fallo
+  python -m evaluacion.evaluar_pdf --cvs mis_pdfs --casos mis_casos.json   # tus propios PDFs
 """
 
 import argparse
@@ -18,8 +18,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from recuperacion_local import MAX_FUENTES, ordenar_fragmentos, separar_palabras
-from servicio_consultas import preparar_coleccion
+from rag.recuperacion_local import MAX_FUENTES, ordenar_fragmentos, separar_palabras
+from rag.servicio_consultas import preparar_coleccion
 
 
 RAIZ = Path(__file__).resolve().parent / "eval_pdf"

@@ -4,7 +4,7 @@ import html
 import json
 import re
 
-from fragmentos import lugar
+from rag.fragmentos import lugar
 
 
 FORMATO = {

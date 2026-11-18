@@ -1,8 +1,8 @@
 """Prepara una vez el índice del ejemplo fijo; nunca se ejecuta en Docker build."""
 
-from api_http import CACHE_EJEMPLO, EJEMPLO
-from semantica import ruta_cache, texto_para_embedding, vectores
-from servicio_consultas import alcance_indexacion, cliente_openai, preparar_coleccion
+from rag.api_http import CACHE_EJEMPLO, EJEMPLO
+from rag.semantica import ruta_cache, texto_para_embedding, vectores
+from rag.servicio_consultas import alcance_indexacion, cliente_openai, preparar_coleccion
 
 
 def main():

@@ -6,8 +6,8 @@ __pycache__
 .env.*
 cache_embeddings
 cargas_temporales
-eval_heldout/index
-evaluacion_holdout.json
+evaluacion/eval_heldout/index
+evaluacion/resultados/evaluacion_holdout.json
 *.pem
 *.key
 work

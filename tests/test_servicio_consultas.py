@@ -5,11 +5,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import semantica
-import servicio_consultas as servicio
+from rag import semantica
+from rag import servicio_consultas as servicio
 
 
-EJEMPLO = Path(__file__).parent / "sample_project"
+RAIZ = Path(__file__).resolve().parent.parent
+EJEMPLO = RAIZ / "ejemplo" / "sample_project"
 
 
 def fuente(ruta, simbolo, codigo):

@@ -10,14 +10,14 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import inicio
-import ingesta_codigo as ingesta
-import recuperacion_local as local
-import servicio_consultas as servicio
-from lenguajes_js import fragmentos_javascript
+from rag import ingesta_codigo as ingesta
+from rag import recuperacion_local as local
+from rag import servicio_consultas as servicio
+from rag.lenguajes_js import fragmentos_javascript
 
 
-BASE = Path(__file__).parent
-WEB = BASE / "sample_web_project"
+BASE = Path(__file__).resolve().parent.parent
+WEB = BASE / "ejemplo" / "sample_web_project"
 
 
 class MultistackTest(unittest.TestCase):

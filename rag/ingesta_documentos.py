@@ -11,7 +11,7 @@ from pdfminer.pdfparser import PDFSyntaxError
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
-from ingesta_codigo import CARPETAS_IGNORADAS, registrar_aviso
+from rag.ingesta_codigo import CARPETAS_IGNORADAS, registrar_aviso
 
 
 EXTENSIONES_DOCUMENTO = {".md", ".markdown", ".txt", ".pdf"}

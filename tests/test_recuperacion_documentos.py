@@ -2,9 +2,9 @@
 
 import unittest
 
-from fragmentos import normalizar
-from ingesta_documentos import fragmentos_desde_bytes
-from recuperacion_local import ordenar_fragmentos, separar_palabras
+from rag.fragmentos import normalizar
+from rag.ingesta_documentos import fragmentos_desde_bytes
+from rag.recuperacion_local import ordenar_fragmentos, separar_palabras
 
 
 # Secciones separadas, como quedan los fragmentos de un CV en PDF con títulos de plantilla.

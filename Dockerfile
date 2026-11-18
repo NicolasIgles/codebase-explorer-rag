@@ -15,4 +15,4 @@ COPY --chown=rag:rag . .
 USER rag
 EXPOSE 8080
 
-CMD ["sh", "-c", "exec python -m uvicorn api_http:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --no-proxy-headers"]
+CMD ["sh", "-c", "exec python -m uvicorn rag.api_http:app --host 0.0.0.0 --port ${PORT:-8080} --workers 1 --no-proxy-headers"]

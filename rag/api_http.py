@@ -17,15 +17,15 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from openai import OpenAIError
 from pydantic import BaseModel, ConfigDict, Field
-from ingesta_documentos import EXTENSIONES_DOCUMENTO
-from cargas_temporales import (
+from rag.ingesta_documentos import EXTENSIONES_DOCUMENTO
+from rag.cargas_temporales import (
     AlmacenCargas, MAX_ARCHIVOS, MAX_ARCHIVO_BYTES, MAX_FRAGMENTOS_CARGA, MAX_TOTAL_BYTES,
     VIDA_SEGUNDOS, validar_nombre,
 )
 
-from recuperacion_local import parece_espanol
-from semantica import CACHE, ruta_cache
-from servicio_consultas import (
+from rag.recuperacion_local import parece_espanol
+from rag.semantica import CACHE, ruta_cache
+from rag.servicio_consultas import (
     RespuestaModeloInvalida,
     alcance_indexacion,
     exigir_autorizacion,
@@ -34,13 +34,14 @@ from servicio_consultas import (
     recuperar_fuentes,
     traducir_pregunta,
 )
-from validar_evidencia import contexto_para_modelo
+from rag.validar_evidencia import contexto_para_modelo
 
 
-EJEMPLO = Path(__file__).resolve().parent / "sample_project"
-CACHE_EJEMPLO = Path(__file__).resolve().parent / "index_ejemplo"
+CARPETA_EJEMPLO = Path(__file__).resolve().parent.parent / "ejemplo"
+EJEMPLO = CARPETA_EJEMPLO / "sample_project"
+CACHE_EJEMPLO = CARPETA_EJEMPLO / "index_ejemplo"
+PREGUNTAS_EJEMPLO = CARPETA_EJEMPLO / "preguntas_ejemplo.json"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-PREGUNTAS_EJEMPLO = Path(__file__).resolve().parent / "preguntas_ejemplo.json"
 
 
 def contexto_visible(pregunta, fuentes):

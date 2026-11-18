@@ -6,7 +6,7 @@ import statistics
 import time
 from pathlib import Path
 
-from recuperacion_local import buscar_en_carpeta
+from rag.recuperacion_local import buscar_en_carpeta
 
 
 def coincide(fragmento, caso):

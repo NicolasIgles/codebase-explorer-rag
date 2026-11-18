@@ -1,13 +1,17 @@
 """Pruebas de ubicaciones documentales y PDF sin OCR."""
 
 import unittest
+from pathlib import Path
 from io import BytesIO
 
 from pypdf import PdfWriter
 
-from fragmentos import identidad, lugar, se_superponen
-from ingesta_documentos import fragmentos_desde_bytes, limpiar_texto_pdf
-from ingesta_fuentes import obtener_fragmentos
+from rag.fragmentos import identidad, lugar, se_superponen
+from rag.ingesta_documentos import fragmentos_desde_bytes, limpiar_texto_pdf
+from rag.ingesta_fuentes import obtener_fragmentos
+
+
+EJEMPLO = Path(__file__).resolve().parent.parent / "ejemplo" / "sample_project"
 
 
 def pdf_con_texto(texto):
@@ -82,7 +86,7 @@ class IngestaDocumentosTest(unittest.TestCase):
         )
 
     def test_coleccion_mixta_compartida(self):
-        fragmentos = obtener_fragmentos("sample_project", coleccion_id="ejemplo-prueba")
+        fragmentos = obtener_fragmentos(EJEMPLO, coleccion_id="ejemplo-prueba")
         tipos = {f["tipo_fuente"] for f in fragmentos}
         self.assertEqual(tipos, {"codigo", "documento"})
         self.assertEqual({f["coleccion_id"] for f in fragmentos}, {"ejemplo-prueba"})

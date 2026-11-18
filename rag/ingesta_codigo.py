@@ -5,7 +5,7 @@ import os
 import tokenize
 from pathlib import Path
 
-from lenguajes_js import EXTENSIONES, fragmentos_javascript
+from rag.lenguajes_js import EXTENSIONES, fragmentos_javascript
 
 
 CARPETAS_IGNORADAS = {

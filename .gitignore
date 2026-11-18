@@ -2,8 +2,8 @@
 __pycache__/
 cache_embeddings/
 cargas_temporales/
-index_ejemplo/*.tmp
-eval_heldout/index/
+ejemplo/index_ejemplo/*.tmp
+evaluacion/eval_heldout/index/
 docs/README_historico.md
 prueba_openai.py
 .DS_Store

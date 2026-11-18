@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from api_http import LimiteCuerpoCarga, crear_app, origen_peticion
-from cargas_temporales import AlmacenCargas, VIDA_SEGUNDOS
+from rag.api_http import LimiteCuerpoCarga, crear_app, origen_peticion
+from rag.cargas_temporales import AlmacenCargas, VIDA_SEGUNDOS
 
 
 class Reloj:
@@ -36,7 +36,7 @@ class CargasTemporalesTest(unittest.TestCase):
         )
 
     def test_carga_codigo_y_documento_aislados_y_borrado_manual(self):
-        with patch("servicio_consultas.OpenAI", side_effect=AssertionError("Sin consentimiento")):
+        with patch("rag.servicio_consultas.OpenAI", side_effect=AssertionError("Sin consentimiento")):
             creada = self.cliente.post(
                 "/cargas/colecciones", data={"modo": "local"},
                 files=[
@@ -77,7 +77,7 @@ class CargasTemporalesTest(unittest.TestCase):
         self.assertFalse(any(self.raiz.iterdir()))
 
     def test_pdf_malformado_avisa_y_no_ejecuta_modelo(self):
-        with patch("servicio_consultas.OpenAI", side_effect=AssertionError("Sin consentimiento")):
+        with patch("rag.servicio_consultas.OpenAI", side_effect=AssertionError("Sin consentimiento")):
             creada = self.cargar("roto.pdf", b"no es un pdf")
         self.assertEqual(creada.status_code, 201, creada.text)
         self.assertEqual(creada.json()["cantidad_fragmentos"], 0)

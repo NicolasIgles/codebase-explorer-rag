@@ -8,13 +8,16 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-import semantica
-from lenguajes_js import fragmentos_javascript
+from rag import semantica
+from rag.lenguajes_js import fragmentos_javascript
+
+
+CARPETA_EJEMPLO = Path(__file__).resolve().parent.parent / "ejemplo"
 
 
 class SemanticaTest(unittest.TestCase):
     def test_indice_agrega_solo_importaciones_usadas_por_el_simbolo(self):
-        carpeta = Path(__file__).parent / "sample_web_project"
+        carpeta = CARPETA_EJEMPLO / "sample_web_project"
         codigo = (
             'import { clsx } from "clsx"\n'
             'import { twMerge } from "tailwind-merge"\n'
@@ -29,7 +32,7 @@ class SemanticaTest(unittest.TestCase):
         self.assertNotIn('from "tailwind-merge"', semantica.texto_para_embedding(fragmento, False))
 
     def test_indice_incluye_codigo_python_javascript_y_typescript(self):
-        fragmentos = semantica.obtener_fragmentos(Path(__file__).parent)
+        fragmentos = semantica.obtener_fragmentos(CARPETA_EJEMPLO)
         fuentes = {(f["ruta"], f["simbolo"]) for f in fragmentos}
         self.assertIn(("sample_project/tasks.py", "create_task"), fuentes)
         self.assertIn(("sample_web_project/lib/format.js", "formatTask"), fuentes)
@@ -92,7 +95,7 @@ class SemanticaTest(unittest.TestCase):
 
 
     def test_ejemplo_persistente_no_guarda_vector_de_pregunta(self):
-        carpeta = Path(__file__).parent / "sample_project"
+        carpeta = CARPETA_EJEMPLO / "sample_project"
         fragmento = next(
             f for f in semantica.obtener_fragmentos(carpeta)
             if f["simbolo"] == "can_edit_task"

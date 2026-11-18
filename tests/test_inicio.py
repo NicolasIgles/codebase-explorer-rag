@@ -11,15 +11,15 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import inicio
-import ingesta_codigo as ingesta
-import recuperacion_local as local
-import servicio_consultas as servicio
-from privacidad import motivo_exclusion
-from validar_evidencia import preparar_consulta
+from rag import ingesta_codigo as ingesta
+from rag import recuperacion_local as local
+from rag import servicio_consultas as servicio
+from rag.privacidad import motivo_exclusion
+from rag.validar_evidencia import preparar_consulta
 
 
-BASE = Path(__file__).parent
-EJEMPLO = BASE / "sample_project"
+BASE = Path(__file__).resolve().parent.parent
+EJEMPLO = BASE / "ejemplo" / "sample_project"
 
 
 class BusquedaTest(unittest.TestCase):
@@ -60,7 +60,7 @@ class BusquedaTest(unittest.TestCase):
         salida = io.StringIO()
         with (
             patch("builtins.input", side_effect=[str(EJEMPLO), "pregunta", "NO"]),
-            patch("servicio_consultas.obtener_fragmentos", return_value=[fuente]),
+            patch("rag.servicio_consultas.obtener_fragmentos", return_value=[fuente]),
             patch.object(servicio, "OpenAI", side_effect=AssertionError("No debe llamar a OpenAI")),
             redirect_stdout(salida),
         ):
@@ -83,8 +83,8 @@ class BusquedaTest(unittest.TestCase):
         with (
             patch("builtins.input", side_effect=[str(EJEMPLO), "pregunta", "INDEXAR"]),
             patch.dict("os.environ", {"OPENAI_API_KEY": "clave-de-prueba"}),
-            patch("servicio_consultas.obtener_fragmentos", return_value=[fuente, secreto]),
-            patch("servicio_consultas.buscar_con_embeddings", return_value=([], [fuente])) as buscar,
+            patch("rag.servicio_consultas.obtener_fragmentos", return_value=[fuente, secreto]),
+            patch("rag.servicio_consultas.buscar_con_embeddings", return_value=([], [fuente])) as buscar,
             patch.object(servicio, "OpenAI") as cliente,
             redirect_stdout(salida),
         ):
@@ -101,7 +101,7 @@ class BusquedaTest(unittest.TestCase):
         self.assertEqual(ingesta.nombres_atributos_llamados(arbol), ["sign", "unsign", "unsign"])
 
     def test_preguntas_con_ubicacion_conocida(self):
-        preguntas = json.loads((BASE / "questions.json").read_text(encoding="utf-8"))
+        preguntas = json.loads((BASE / "evaluacion" / "preguntas" / "questions.json").read_text(encoding="utf-8"))
         for caso in preguntas:
             with self.subTest(pregunta=caso["question"]):
                 resultados = local.buscar_en_carpeta(EJEMPLO, caso["question"])
@@ -121,7 +121,7 @@ class BusquedaTest(unittest.TestCase):
 
     def test_busqueda_incluye_subcarpetas(self):
         rutas = {ruta.relative_to(BASE).as_posix() for ruta in ingesta.archivos_python(BASE)}
-        self.assertIn("sample_project/permissions.py", rutas)
+        self.assertIn("ejemplo/sample_project/permissions.py", rutas)
         self.assertFalse(any(".venv/" in ruta for ruta in rutas))
 
     def test_mensaje_incluye_pregunta_y_fuente_real(self):
